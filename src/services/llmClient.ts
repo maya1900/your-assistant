@@ -18,23 +18,42 @@ export interface StreamRequest {
 }
 
 /**
+ * 返回针对 /chat/completions 的 URL 和 headers。
+ * Dev 走 Vite 动态代理绕开浏览器 CORS；prod 直连（部署侧自行处理跨域）。
+ */
+function buildEndpoint(baseURL: string, apiKey: string) {
+  const cleanedBase = baseURL.replace(/\/+$/, '');
+  const isDev = import.meta.env.DEV;
+  const url = isDev ? '/api/llm/chat/completions' : `${cleanedBase}/chat/completions`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+  };
+  if (isDev) headers['X-LLM-Base-URL'] = cleanedBase;
+  return { url, headers };
+}
+
+async function readErrorDetail(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    return data?.error?.message || JSON.stringify(data);
+  } catch {
+    try {
+      return await response.text();
+    } catch {
+      return '';
+    }
+  }
+}
+
+/**
  * Calls an OpenAI-compatible /chat/completions endpoint with stream=true.
  * Parses SSE on the fly and dispatches token-level deltas.
  */
 export async function streamChat(req: StreamRequest): Promise<void> {
   const { baseURL, apiKey, model, temperature, messages, signal, onDelta, onDone, onError } = req;
 
-  const cleanedBase = baseURL.replace(/\/+$/, '');
-
-  // Dev 走 Vite 动态代理绕开浏览器 CORS；prod 直连（部署侧自行处理跨域）。
-  const isDev = import.meta.env.DEV;
-  const url = isDev ? '/api/llm/chat/completions' : `${cleanedBase}/chat/completions`;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${apiKey}`,
-  };
-  if (isDev) headers['X-LLM-Base-URL'] = cleanedBase;
+  const { url, headers } = buildEndpoint(baseURL, apiKey);
 
   let response: Response;
   try {
@@ -56,17 +75,7 @@ export async function streamChat(req: StreamRequest): Promise<void> {
   }
 
   if (!response.ok) {
-    let detail = '';
-    try {
-      const data = await response.json();
-      detail = data?.error?.message || JSON.stringify(data);
-    } catch {
-      try {
-        detail = await response.text();
-      } catch {
-        /* ignore */
-      }
-    }
+    const detail = await readErrorDetail(response);
     onError(new Error(`${response.status} ${response.statusText}${detail ? ` · ${detail}` : ''}`));
     return;
   }
@@ -119,5 +128,65 @@ export async function streamChat(req: StreamRequest): Promise<void> {
   } catch (err) {
     if ((err as Error).name === 'AbortError') return;
     onError(err as Error);
+  }
+}
+
+/* ───────────────────────────── 连通性测试 ───────────────────────────── */
+
+export interface TestConnectionRequest {
+  baseURL: string;
+  apiKey: string;
+  model: string;
+  signal?: AbortSignal;
+}
+
+export interface TestConnectionResult {
+  ok: boolean;
+  latencyMs: number;
+  reply?: string;
+  error?: string;
+}
+
+/**
+ * 发一条最小成本的非流式 ping，用来验证 Base URL / Key / Model 三者
+ * 是否齐活，并报告延迟。
+ */
+export async function testConnection(req: TestConnectionRequest): Promise<TestConnectionResult> {
+  const { baseURL, apiKey, model, signal } = req;
+  const { url, headers } = buildEndpoint(baseURL, apiKey);
+
+  const start = performance.now();
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5,
+        stream: false,
+      }),
+    });
+    const latencyMs = Math.round(performance.now() - start);
+
+    if (!response.ok) {
+      const detail = await readErrorDetail(response);
+      return {
+        ok: false,
+        latencyMs,
+        error: `${response.status} ${response.statusText}${detail ? ' · ' + detail : ''}`,
+      };
+    }
+
+    const data = await response.json();
+    const reply: string | undefined = data?.choices?.[0]?.message?.content;
+    return { ok: true, latencyMs, reply };
+  } catch (err) {
+    const latencyMs = Math.round(performance.now() - start);
+    if ((err as Error).name === 'AbortError') {
+      return { ok: false, latencyMs, error: '已取消' };
+    }
+    return { ok: false, latencyMs, error: `网络错误：${(err as Error).message}` };
   }
 }

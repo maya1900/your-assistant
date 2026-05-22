@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff, HelpCircle, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, HelpCircle, Loader2, PlugZap, Trash2, X, XCircle } from 'lucide-react';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useChatStore } from '@/store/useChatStore';
+import { testConnection, type TestConnectionResult } from '@/services/llmClient';
 import type { Settings } from '@/types';
 
 interface Props {
@@ -21,6 +22,31 @@ export function SettingsDialog({ open, onClose }: Props) {
     defaultSystemPrompt: settings.defaultSystemPrompt,
   });
   const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
+
+  const canTest =
+    !!draft.baseURL.trim() && !!draft.apiKey.trim() && !!draft.model.trim() && !testing;
+
+  // 修改三项必填字段时清掉旧的测试结果
+  function patchDraft(patch: Partial<Settings>) {
+    const touchesConn =
+      'baseURL' in patch || 'apiKey' in patch || 'model' in patch;
+    setDraft((d) => ({ ...d, ...patch }));
+    if (touchesConn) setTestResult(null);
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    const result = await testConnection({
+      baseURL: draft.baseURL.trim(),
+      apiKey: draft.apiKey.trim(),
+      model: draft.model.trim(),
+    });
+    setTestResult(result);
+    setTesting(false);
+  }
 
   useEffect(() => {
     if (open) {
@@ -88,7 +114,7 @@ export function SettingsDialog({ open, onClose }: Props) {
             >
               <input
                 value={draft.baseURL}
-                onChange={(e) => setDraft({ ...draft, baseURL: e.target.value })}
+                onChange={(e) => patchDraft({ baseURL: e.target.value })}
                 placeholder="https://api.deepseek.com/v1"
                 spellCheck={false}
                 className="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono"
@@ -98,7 +124,7 @@ export function SettingsDialog({ open, onClose }: Props) {
             <Field label="Model" hint="模型 ID">
               <input
                 value={draft.model}
-                onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+                onChange={(e) => patchDraft({ model: e.target.value })}
                 placeholder="deepseek-chat"
                 spellCheck={false}
                 className="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono"
@@ -114,7 +140,7 @@ export function SettingsDialog({ open, onClose }: Props) {
                 <input
                   type={showKey ? 'text' : 'password'}
                   value={draft.apiKey}
-                  onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+                  onChange={(e) => patchDraft({ apiKey: e.target.value })}
                   placeholder="sk-..."
                   className="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono pr-20"
                 />
@@ -128,6 +154,38 @@ export function SettingsDialog({ open, onClose }: Props) {
                 </button>
               </div>
             </Field>
+
+            {/* 测试连接 */}
+            <div className="col-span-3 rounded-xl bg-paper-50 border border-paper-300/60 px-4 py-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent-100 grid place-items-center text-accent-600 flex-none">
+                <PlugZap size={16} strokeWidth={1.8} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium">测试连接</div>
+                {testResult ? (
+                  <TestResultLine result={testResult} />
+                ) : (
+                  <div className="text-[11.5px] text-ink-500 mt-0.5">
+                    发一条 ping 验证 Base URL / Key / Model 是否齐活。
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={!canTest}
+                className="px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-colors flex items-center gap-1.5 bg-ink-900 text-paper-50 hover:bg-ink-700 disabled:bg-paper-200 disabled:text-ink-500 disabled:cursor-not-allowed flex-none"
+              >
+                {testing ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" />
+                    测试中…
+                  </>
+                ) : (
+                  '测试'
+                )}
+              </button>
+            </div>
 
             <Field
               className="col-span-3"
@@ -254,6 +312,26 @@ function Field({ label, hint, rightLabel, className, children }: FieldProps) {
       </label>
       {children}
       {hint && <div className="mt-1.5 text-[11.5px] text-ink-500">{hint}</div>}
+    </div>
+  );
+}
+
+function TestResultLine({ result }: { result: TestConnectionResult }) {
+  if (result.ok) {
+    return (
+      <div className="mt-0.5 text-[11.5px] text-sage-700 flex items-center gap-1.5">
+        <CheckCircle2 size={13} className="flex-none" />
+        <span>连接成功 · {result.latencyMs} ms</span>
+        {result.reply && (
+          <span className="text-ink-500 truncate">· 回声「{result.reply.trim().slice(0, 24)}」</span>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-0.5 text-[11.5px] text-rose-500 flex items-start gap-1.5">
+      <XCircle size={13} className="flex-none mt-[1px]" />
+      <span className="break-all leading-relaxed">{result.error || '失败'}</span>
     </div>
   );
 }
