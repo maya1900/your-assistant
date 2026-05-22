@@ -87,7 +87,7 @@ vercel              # 用 vercel CLI 部署
 
 部署完成即可使用，**不需要任何额外配置**。
 
-> Vite 项目结构内 `api/llm/[...path].ts` 是一个 Vercel Edge Function，会镜像 dev 阶段 Vite 中间件的协议（按 `X-LLM-Base-URL` 头动态转发），所以浏览器永远只调用同源 `/api/llm/*`，不会撞 CORS。详见 [docs/ARCHITECTURE.md § 五](docs/ARCHITECTURE.md)。
+> Vite 项目结构内 `api/llm-proxy.ts` 是一个 Vercel Edge Function，配合 `vercel.json` 的 rewrite (`/api/llm/:path*` → `/api/llm-proxy?path=:path*`) 镜像 dev 阶段 Vite 中间件的协议（按 `X-LLM-Base-URL` 头动态转发），所以浏览器永远只调用同源 `/api/llm/*`，不会撞 CORS。详见 [docs/ARCHITECTURE.md § 五](docs/ARCHITECTURE.md)。
 
 ### 部署到其他平台
 
@@ -97,14 +97,14 @@ dist/ 是纯静态文件，可以丢到任意静态站点托管，但**必须自
 - 读取请求头 `X-LLM-Base-URL` 决定转发目标
 - 流式响应原样回传（务必边读边写，不要缓冲，否则 SSE 会断）
 
-照着 `api/llm/[...path].ts` 翻译一遍即可。
+照着 `api/llm-proxy.ts` + `vercel.json` 翻译一遍即可。
 
 ## 项目结构
 
 ```
 your-assistant/
 ├── api/
-│   └── llm/[...path].ts  # Vercel Edge Function (生产环境代理)
+│   └── llm-proxy.ts      # Vercel Edge Function (生产环境代理)
 ├── docs/                 # SPEC / ARCHITECTURE / ROADMAP + 截图
 ├── design/               # 设计原型（静态 HTML）
 ├── src/

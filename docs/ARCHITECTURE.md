@@ -29,7 +29,8 @@ your-assistant/
 ├── tailwind.config.js
 ├── postcss.config.js
 ├── api/
-│   └── llm/[...path].ts          # Vercel Edge Function: prod 端 LLM 代理（见 § 五）
+│   └── llm-proxy.ts              # Vercel Edge Function: prod 端 LLM 代理（见 § 五）
+├── vercel.json                   # Vercel rewrite + 部署配置
 ├── design/index.html             # 静态 UI 原型，React 还原参照
 ├── docs/
 │   ├── SPEC.md
@@ -179,15 +180,28 @@ const llmProxy: Connect.NextHandleFunction = async (req, res) => {
 
 要点：`flushHeaders()` 提前把响应头送出去，避免 Node 默认缓冲打断 SSE。
 
-### 5.2 Prod — Vercel Edge Function（`api/llm/[...path].ts`）
+### 5.2 Prod — Vercel Edge Function（`api/llm-proxy.ts` + `vercel.json`）
+
+非 Next.js 的 Vercel 项目里 `[...catchall].ts` 的文件名路由不稳定，改用更明确的 vercel.json rewrite。
+
+```json
+// vercel.json
+{
+  "rewrites": [
+    { "source": "/api/llm/:path*", "destination": "/api/llm-proxy?path=:path*" }
+  ]
+}
+```
 
 ```ts
+// api/llm-proxy.ts
 export const config = { runtime: 'edge' };
 
 export default async function handler(req: Request): Promise<Response> {
   const baseURL = req.headers.get('x-llm-base-url')!;
   const url = new URL(req.url);
-  const target = baseURL + url.pathname.replace(/^\/api\/llm/, '') + url.search;
+  const subpath = url.searchParams.get('path')!;   // chat/completions
+  const target = `${baseURL}/${subpath}`;
 
   const upstream = await fetch(target, {
     method: req.method,

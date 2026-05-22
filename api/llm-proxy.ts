@@ -1,11 +1,11 @@
 /**
  * Vercel Edge Function：生产环境的 LLM 反向代理。
  *
- * 协议跟 vite.config.ts 里的 dev 中间件保持一致：
- *   - 前端请求 /api/llm/<sub>，带 X-LLM-Base-URL 头
- *   - 这里把请求转发到 ${baseURL}<sub>，流式响应原样回传
+ * 路由触达：vercel.json 的 rewrite 把 /api/llm/<sub> 改写为
+ * /api/llm-proxy?path=<sub>，所以这里从 ?path 拿原始子路径。
  *
- * 结果：前端在 dev / prod 都走同一条 /api/llm/* 路径，绕开浏览器 CORS。
+ * 协议跟 vite.config.ts 里的 dev 中间件保持一致：读 X-LLM-Base-URL 头
+ * 决定转发目标，流式响应原样回传。
  */
 
 export const config = { runtime: 'edge' };
@@ -31,8 +31,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const url = new URL(req.url);
-  const subpath = url.pathname.replace(/^\/api\/llm/, '');
-  const target = baseURL + subpath + url.search;
+  const subpath = url.searchParams.get('path') || '';
+  if (!subpath) {
+    return jsonError(400, '缺少 path 参数（vercel.json rewrite 配置应该填充它）');
+  }
+  const target = `${baseURL}/${subpath}`;
 
   const fwdHeaders = new Headers();
   for (const [k, v] of req.headers.entries()) {
