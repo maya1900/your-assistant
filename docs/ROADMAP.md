@@ -80,15 +80,26 @@
 
 ## 验收清单
 
-- [ ] F1 多会话 CRUD
-- [ ] F2 多轮上下文
-- [ ] F3 流式逐字
-- [ ] F4 刷新不丢
-- [ ] F5 清空对话
-- [ ] F6 Markdown + 代码高亮 + 复制
-- [ ] F7 设置面板
-- [ ] F8 Stop 中断
-- [ ] F9 重新生成
-- [ ] F10 编辑提问
-- [ ] F11 导出 MD / JSON
-- [ ] F12 会话级 System Prompt
+- [x] F1 多会话 CRUD
+- [x] F2 多轮上下文
+- [x] F3 流式逐字
+- [x] F4 刷新不丢
+- [x] F5 清空对话
+- [x] F6 Markdown + 代码高亮 + 复制
+- [x] F7 设置面板
+- [x] F8 Stop 中断
+- [x] F9 重新生成
+- [x] F10 编辑提问
+- [x] F11 导出 MD / JSON
+- [x] F12 会话级 System Prompt
+- [x] F13 测试连接
+
+## 已发布后续
+
+按时间线列出上线后新加的内容。详情见 [SPEC.md](SPEC.md) 与 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+| Commit | 类型 | 说明 |
+|---|---|---|
+| `e41f94d` | fix | Vite dev 动态代理，按 `X-LLM-Base-URL` 头转发，绕开浏览器直连 LLM 的 CORS 拦截 |
+| `3e28ce8` | feat | 设置面板新增"测试连接"按钮 (F13)：非流式 ping，报告延迟与上游错误 |
+| `0d1cd33` | fix | 输入框底部工具栏右内边距改为 `pr-14`，避让绝对定位的发送按钮 |
