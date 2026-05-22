@@ -1,0 +1,12 @@
+# Netlify 配置
+# 把这份 netlify.toml 放到项目根，netlify/edge-functions/llm-proxy.ts 也放对应位置。
+# 然后 `netlify deploy --prod`（或直接连 GitHub 自动部署）。
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# 把 /api/llm/* 路由到 edge function
+[[edge_functions]]
+  function = "llm-proxy"
+  path = "/api/llm/*"

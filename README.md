@@ -91,13 +91,16 @@ vercel              # 用 vercel CLI 部署
 
 ### 部署到其他平台
 
-dist/ 是纯静态文件，可以丢到任意静态站点托管，但**必须自己再实现一份等价的代理**（Cloudflare Workers / Netlify Functions / Nginx 反向代理皆可）。代理协议：
+dist/ 是纯静态文件，可以丢到任意静态站点托管，但**必须自己再实现一份等价的代理**。常见平台的现成配方已经放在 [`deploy/`](deploy/)：
 
-- 接受 path `/api/llm/<any>`
-- 读取请求头 `X-LLM-Base-URL` 决定转发目标
-- 流式响应原样回传（务必边读边写，不要缓冲，否则 SSE 会断）
+| 平台 | 配置 |
+|---|---|
+| Cloudflare Pages | [`deploy/cloudflare/`](deploy/cloudflare/) |
+| Netlify | [`deploy/netlify/`](deploy/netlify/) |
+| Docker 自托管 | [`deploy/docker/`](deploy/docker/) — `docker build -f deploy/docker/Dockerfile -t hearth .` |
+| Nginx 反代 | [`deploy/nginx/nginx.conf`](deploy/nginx/nginx.conf) |
 
-照着 `api/llm-proxy.ts` + `vercel.json` 翻译一遍即可。
+详细说明与协议规范见 [deploy/README.md](deploy/README.md)。
 
 ## 项目结构
 
