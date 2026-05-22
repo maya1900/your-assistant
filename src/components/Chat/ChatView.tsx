@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
-import { Download, Menu, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Bug, Download, Info, Menu, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
 import { exportConversation } from '@/lib/exporters';
+import { AboutDialog, REPO_URL } from './AboutDialog';
 import { ChatInput } from './ChatInput';
 import { EmptyState } from './EmptyState';
 import { MessageBubble } from './MessageBubble';
@@ -27,6 +28,49 @@ function HamburgerButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+function MoreMenu({ onAbout }: { onAbout: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="h-8 w-8 rounded-lg text-ink-700 hover:bg-paper-200/60 transition-colors grid place-items-center"
+        title="更多"
+        aria-label="更多操作"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-9 z-30 bg-paper-card border border-paper-300 rounded-xl shadow-lift overflow-hidden min-w-[160px]">
+            <button
+              onClick={() => {
+                setOpen(false);
+                onAbout();
+              }}
+              className="w-full text-left text-[13px] px-3 py-2.5 hover:bg-paper-100 flex items-center gap-2.5"
+            >
+              <Info size={14} className="text-ink-500" />
+              关于
+            </button>
+            <a
+              href={`${REPO_URL}/issues/new`}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+              className="w-full text-left text-[13px] px-3 py-2.5 hover:bg-paper-100 flex items-center gap-2.5"
+            >
+              <Bug size={14} className="text-ink-500" />
+              反馈 / 提 Issue
+            </a>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
   const conv = useChatStore((s) => s.getActive());
   const createConversation = useChatStore((s) => s.createConversation);
@@ -38,6 +82,7 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
   const [input, setInput] = useState('');
   const [exportOpen, setExportOpen] = useState(false);
   const [promptDialogOpen, setPromptDialogOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
   const listRef = useAutoScroll<HTMLDivElement>([
@@ -52,6 +97,9 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
       <main className="flex-1 flex flex-col min-w-0 relative">
         <header className="h-14 flex-none flex items-center px-4 md:px-6 border-b border-paper-300/50 bg-paper-50/40 backdrop-blur-md">
           <HamburgerButton onClick={onOpenMobileSidebar} />
+          <div className="ml-auto">
+            <MoreMenu onAbout={() => setAboutOpen(true)} />
+          </div>
         </header>
         <EmptyState
           onPick={(prompt) => {
@@ -71,6 +119,7 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
           isStreaming={isStreaming}
           onOpenSettings={onOpenSettings}
         />
+        <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
       </main>
     );
   }
@@ -162,12 +211,7 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
             <span className="hidden sm:inline">清空</span>
           </button>
 
-          <button
-            className="h-8 w-8 rounded-lg text-ink-700 hover:bg-paper-200/60 transition-colors grid place-items-center"
-            title="更多"
-          >
-            <MoreHorizontal size={16} />
-          </button>
+          <MoreMenu onAbout={() => setAboutOpen(true)} />
         </div>
       </header>
 
@@ -207,6 +251,7 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
       />
 
       <SystemPromptDialog open={promptDialogOpen} onClose={() => setPromptDialogOpen(false)} />
+      <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </main>
   );
 }
