@@ -24,17 +24,24 @@ export interface StreamRequest {
 export async function streamChat(req: StreamRequest): Promise<void> {
   const { baseURL, apiKey, model, temperature, messages, signal, onDelta, onDone, onError } = req;
 
-  const url = `${baseURL.replace(/\/+$/, '')}/chat/completions`;
+  const cleanedBase = baseURL.replace(/\/+$/, '');
+
+  // Dev 走 Vite 动态代理绕开浏览器 CORS；prod 直连（部署侧自行处理跨域）。
+  const isDev = import.meta.env.DEV;
+  const url = isDev ? '/api/llm/chat/completions' : `${cleanedBase}/chat/completions`;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiKey}`,
+  };
+  if (isDev) headers['X-LLM-Base-URL'] = cleanedBase;
 
   let response: Response;
   try {
     response = await fetch(url, {
       method: 'POST',
       signal,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
       body: JSON.stringify({
         model,
         temperature,
