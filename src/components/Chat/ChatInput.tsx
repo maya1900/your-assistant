@@ -87,8 +87,8 @@ export function ChatInput({
             </button>
           )}
 
-          {/* Bottom toolbar */}
-          <div className="flex items-center gap-2 px-4 pb-3 -mt-1">
+          {/* Bottom toolbar — pr-14 leaves room for the absolute Send/Stop button */}
+          <div className="flex items-center gap-2 pl-4 pr-14 pb-3 -mt-1">
             <span className="text-[11.5px] text-ink-500 flex items-center gap-1.5 px-2 py-1">
               上下文 {messageCount} 条
             </span>
