@@ -51,13 +51,13 @@ interface Props {
 export function EmptyState({ onPick }: Props) {
   return (
     <div className="flex-1 overflow-y-auto nice-scroll">
-      <div className="max-w-[780px] mx-auto px-6 py-16">
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-2 mb-5 text-[11px] uppercase tracking-wider-meta text-ink-500">
+      <div className="max-w-[780px] mx-auto px-4 md:px-6 py-10 sm:py-16">
+        <div className="mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 mb-4 sm:mb-5 text-[11px] uppercase tracking-wider-meta text-ink-500">
             <span className="brand-mark !w-3 !h-3" />
             <span>{getGreeting()}</span>
           </div>
-          <h1 className="font-display text-[56px] leading-[1.05] tracking-tight-display text-ink-900">
+          <h1 className="font-display text-[40px] sm:text-[56px] leading-[1.05] tracking-tight-display text-ink-900">
             今天，
             <span
               className="italic"
@@ -68,7 +68,7 @@ export function EmptyState({ onPick }: Props) {
             <br />
             什么？
           </h1>
-          <p className="mt-5 text-[15px] text-ink-700 max-w-[480px] leading-relaxed">
+          <p className="mt-4 sm:mt-5 text-[14px] sm:text-[15px] text-ink-700 max-w-[480px] leading-relaxed">
             我可以解释代码、写作、做技术选型、翻译，或者只是陪你想清楚一件事。从一张卡片开始，或者直接在下面输入。
           </p>
         </div>

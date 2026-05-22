@@ -38,7 +38,7 @@ export function ChatInput({
   const canSend = !isStreaming && isConfigured && value.trim().length > 0;
 
   return (
-    <div className="flex-none px-6 pb-6 pt-2 bg-gradient-to-t from-paper-50 via-paper-50 to-paper-50/0">
+    <div className="flex-none px-4 md:px-6 pb-4 sm:pb-6 pt-2 bg-gradient-to-t from-paper-50 via-paper-50 to-paper-50/0">
       <div className="max-w-[768px] mx-auto">
         {!isConfigured && (
           <button
@@ -61,10 +61,10 @@ export function ChatInput({
               }
             }}
             placeholder={
-              isConfigured ? '问点什么…   Enter 发送 · Shift+Enter 换行' : '配置 API 后开始对话'
+              isConfigured ? '问点什么…' : '配置 API 后开始对话'
             }
             disabled={!isConfigured}
-            className="w-full resize-none bg-transparent px-5 py-4 pr-14 text-[14.5px] leading-relaxed placeholder:text-ink-500/70 focus:outline-none disabled:opacity-60"
+            className="w-full resize-none bg-transparent px-4 sm:px-5 py-4 pr-14 text-[14.5px] leading-relaxed placeholder:text-ink-500/70 focus:outline-none disabled:opacity-60"
           />
 
           {/* Send / Stop button */}
@@ -88,7 +88,7 @@ export function ChatInput({
           )}
 
           {/* Bottom toolbar — pr-14 leaves room for the absolute Send/Stop button */}
-          <div className="flex items-center gap-2 pl-4 pr-14 pb-3 -mt-1">
+          <div className="flex items-center gap-2 pl-3 sm:pl-4 pr-14 pb-3 -mt-1">
             <span className="text-[11.5px] text-ink-500 flex items-center gap-1.5 px-2 py-1">
               上下文 {messageCount} 条
             </span>
@@ -97,14 +97,15 @@ export function ChatInput({
               className="text-[11.5px] text-ink-500 hover:text-ink-900 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-paper-100"
             >
               <Thermometer size={12} />
-              Temperature {temperature}
+              <span className="hidden sm:inline">Temperature {temperature}</span>
+              <span className="sm:hidden">{temperature}</span>
             </button>
-            <span className="ml-auto text-[11px] text-ink-500/80">
+            <span className="ml-auto text-[11px] text-ink-500/80 hidden md:inline">
               <span className="kbd">Enter</span> 发送 · <span className="kbd">⇧↵</span> 换行
             </span>
           </div>
         </div>
-        <p className="text-center text-[11px] text-ink-500 mt-3">
+        <p className="text-center text-[11px] text-ink-500 mt-3 hidden sm:block">
           所有对话仅保存在你的浏览器本地，刷新或换设备不会同步。
         </p>
       </div>

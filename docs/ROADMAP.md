@@ -78,6 +78,17 @@
 - 用 `run` skill 启动项目，浏览器实际跑一遍核心链路
 - 对照 SPEC.md F1~F12 逐项验收
 
+## 阶段 10 - 移动端适配（F14）
+
+按 [SPEC § 七](SPEC.md) 与 [ARCHITECTURE § 十](ARCHITECTURE.md) 的方案落地：
+
+- `App.tsx` 持有 `mobileSidebarOpen` 状态，向下传 `onOpen` / `onClose`
+- `Sidebar.tsx`：增加抽屉容器类，绑定关闭路径（遮罩/会话点击/新建/设置/Esc/resize 过阈值）
+- `ChatView.tsx`：顶栏左侧 `< md` 显示汉堡按钮；动作按钮在 `< sm` 时收起文字标签
+- `SettingsDialog.tsx` + `SystemPromptDialog.tsx`：`< sm` 时占满视口，无圆角
+- `ChatInput.tsx`：底部右侧的 Enter/⇧↵ kbd 提示 `< md` 隐藏
+- `EmptyState.tsx`：主标题 `text-[40px] md:text-[56px]`
+
 ## 验收清单
 
 - [x] F1 多会话 CRUD
@@ -93,6 +104,7 @@
 - [x] F11 导出 MD / JSON
 - [x] F12 会话级 System Prompt
 - [x] F13 测试连接
+- [x] F14 移动端适配（抽屉式侧边栏 + 对话框全屏 + 标题栏紧凑）
 
 ## 已发布后续
 

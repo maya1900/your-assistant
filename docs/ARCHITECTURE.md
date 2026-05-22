@@ -212,3 +212,49 @@ function useStreamingChat() {
 ## 九、安全说明
 
 由于无后端，API Key 存在 LocalStorage 中，仅用于个人本地使用。不应在生产环境直接部署给多人使用（Key 会暴露在浏览器）。设置面板需要在 Key 输入框旁加一行小字说明。
+
+## 十、响应式策略
+
+实现 SPEC § 七 的具体技术选择。
+
+**断点**：直接用 Tailwind 默认 `sm` (640px) / `md` (768px)。不引入自定义断点，降低心智负担。
+
+**侧边栏（核心改动）**：
+
+- DOM 始终渲染一份，不做条件 mount 以避免动画割裂
+- 容器类：`fixed inset-y-0 left-0 z-40 md:static md:translate-x-0 transition-transform`
+- 移动态展开：`translate-x-0`；收起：`-translate-x-full`
+- 状态由 App 组件持有的 `mobileSidebarOpen` 控制，下沉为 prop
+- 触发关闭的所有路径：
+  1. 遮罩点击
+  2. 选中任一会话
+  3. 点"新对话"
+  4. 点"设置"
+  5. Esc 键
+  6. 窗口跨过 `md` 阈值（resize listener）
+
+**遮罩**：
+
+```tsx
+{mobileOpen && (
+  <div
+    className="md:hidden fixed inset-0 z-30 bg-ink-900/30"
+    onClick={onMobileClose}
+  />
+)}
+```
+
+**对话框全屏化**：
+
+```tsx
+<div className="dialog-card w-full sm:max-w-[640px] h-full sm:h-auto rounded-none sm:rounded-3xl">
+```
+
+`SettingsDialog` 与 `SystemPromptDialog` 都用同一套规则。
+
+**顶栏汉堡**：
+
+- 仅 `< md` 渲染（`md:hidden`），点击调用 App 暴露的 `onOpenSidebar`
+- 用 `lucide-react` 的 `Menu` 图标，36×36 触摸热区
+
+**何时不写 JS、只用 CSS**：尽量用 Tailwind responsive 前缀 (`md:hidden` / `md:flex` / `text-[40px] md:text-[56px]`) 处理静态差异。只有侧边栏抽屉与遮罩这种需要交互的，才走 React state。

@@ -78,34 +78,34 @@ export function SettingsDialog({ open, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 dialog-backdrop grid place-items-center px-6"
+      className="fixed inset-0 z-50 dialog-backdrop sm:grid sm:place-items-center sm:px-6"
       onClick={onClose}
     >
       <div
-        className="dialog-card w-full max-w-[640px] rounded-3xl overflow-hidden animate-fade-in"
+        className="dialog-card w-full sm:max-w-[640px] h-full sm:h-auto sm:max-h-[92vh] rounded-none sm:rounded-3xl overflow-hidden animate-fade-in flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-7 pt-7 pb-5 flex items-start gap-4">
+        <div className="px-5 sm:px-7 pt-6 sm:pt-7 pb-5 flex items-start gap-4">
           <div className="brand-mark mt-1" />
-          <div className="flex-1">
-            <h2 className="font-display text-[26px] leading-tight tracking-tight-display">设置</h2>
-            <p className="text-[13px] text-ink-500 mt-1">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display text-[22px] sm:text-[26px] leading-tight tracking-tight-display">设置</h2>
+            <p className="text-[12.5px] sm:text-[13px] text-ink-500 mt-1">
               配置任意兼容 OpenAI Chat Completions 协议的模型服务。Key 只保存在你的浏览器，不会上传。
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-paper-200/60 grid place-items-center text-ink-500 hover:text-ink-900 transition-colors"
+            className="w-8 h-8 rounded-lg hover:bg-paper-200/60 grid place-items-center text-ink-500 hover:text-ink-900 transition-colors flex-none"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="hairline mx-7" />
+        <div className="hairline mx-5 sm:mx-7" />
 
         {/* Form */}
-        <div className="px-7 py-6 space-y-5 max-h-[60vh] overflow-y-auto nice-scroll">
+        <div className="px-5 sm:px-7 py-6 space-y-5 flex-1 min-h-0 overflow-y-auto nice-scroll">
           <div className="grid grid-cols-3 gap-x-5 gap-y-5">
             <Field
               className="col-span-2"
@@ -254,7 +254,7 @@ export function SettingsDialog({ open, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-7 py-5 bg-paper-100/60 border-t border-paper-300/50 flex items-center justify-between">
+        <div className="px-5 sm:px-7 py-4 sm:py-5 bg-paper-100/60 border-t border-paper-300/50 flex items-center justify-between gap-2 flex-none">
           <a
             href="https://platform.deepseek.com/api_keys"
             target="_blank"

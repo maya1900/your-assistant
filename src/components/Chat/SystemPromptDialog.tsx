@@ -30,15 +30,15 @@ export function SystemPromptDialog({ open, onClose }: Props) {
   if (!open || !conv) return null;
 
   return (
-    <div className="fixed inset-0 z-40 dialog-backdrop grid place-items-center px-6" onClick={onClose}>
+    <div className="fixed inset-0 z-40 dialog-backdrop sm:grid sm:place-items-center sm:px-6" onClick={onClose}>
       <div
-        className="dialog-card w-full max-w-[560px] rounded-3xl overflow-hidden"
+        className="dialog-card w-full sm:max-w-[560px] h-full sm:h-auto rounded-none sm:rounded-3xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-7 pt-7 pb-3 flex items-start gap-4">
+        <div className="px-5 sm:px-7 pt-6 sm:pt-7 pb-3 flex items-start gap-4 flex-none">
           <div className="brand-mark mt-1" />
-          <div className="flex-1">
-            <h2 className="font-display text-[22px] leading-tight tracking-tight-display">
+          <div className="flex-1 min-w-0">
+            <h2 className="font-display text-[20px] sm:text-[22px] leading-tight tracking-tight-display">
               会话级 System Prompt
             </h2>
             <p className="text-[12.5px] text-ink-500 mt-1">
@@ -47,15 +47,15 @@ export function SystemPromptDialog({ open, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg hover:bg-paper-200/60 grid place-items-center text-ink-500 hover:text-ink-900 transition-colors"
+            className="w-8 h-8 rounded-lg hover:bg-paper-200/60 grid place-items-center text-ink-500 hover:text-ink-900 transition-colors flex-none"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="hairline mx-7" />
+        <div className="hairline mx-5 sm:mx-7" />
 
-        <div className="px-7 py-5 space-y-4">
+        <div className="px-5 sm:px-7 py-5 space-y-4 flex-1 min-h-0 overflow-y-auto nice-scroll">
           <label className="flex items-center gap-2 text-[13px]">
             <input
               type="checkbox"
@@ -84,7 +84,7 @@ export function SystemPromptDialog({ open, onClose }: Props) {
           )}
         </div>
 
-        <div className="px-7 py-4 bg-paper-100/60 border-t border-paper-300/50 flex items-center justify-end gap-2">
+        <div className="px-5 sm:px-7 py-4 bg-paper-100/60 border-t border-paper-300/50 flex items-center justify-end gap-2 flex-none">
           <button
             onClick={onClose}
             className="px-4 py-2 text-[13px] text-ink-700 hover:bg-paper-200 rounded-lg transition-colors"

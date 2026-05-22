@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Download, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Download, Menu, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useChatStore } from '@/store/useChatStore';
 import { useStreamingChat } from '@/hooks/useStreamingChat';
 import { useAutoScroll } from '@/hooks/useAutoScroll';
@@ -11,9 +11,23 @@ import { SystemPromptDialog } from './SystemPromptDialog';
 
 interface Props {
   onOpenSettings: () => void;
+  onOpenMobileSidebar: () => void;
 }
 
-export function ChatView({ onOpenSettings }: Props) {
+function HamburgerButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="md:hidden h-9 w-9 -ml-1.5 rounded-lg text-ink-700 hover:bg-paper-200/60 transition-colors grid place-items-center flex-none"
+      title="打开侧边栏"
+      aria-label="打开侧边栏"
+    >
+      <Menu size={18} strokeWidth={1.8} />
+    </button>
+  );
+}
+
+export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
   const conv = useChatStore((s) => s.getActive());
   const createConversation = useChatStore((s) => s.createConversation);
   const renameConversation = useChatStore((s) => s.renameConversation);
@@ -36,7 +50,9 @@ export function ChatView({ onOpenSettings }: Props) {
   if (!conv) {
     return (
       <main className="flex-1 flex flex-col min-w-0 relative">
-        <header className="h-14 flex-none border-b border-paper-300/50 bg-paper-50/40 backdrop-blur-md" />
+        <header className="h-14 flex-none flex items-center px-4 md:px-6 border-b border-paper-300/50 bg-paper-50/40 backdrop-blur-md">
+          <HamburgerButton onClick={onOpenMobileSidebar} />
+        </header>
         <EmptyState
           onPick={(prompt) => {
             createConversation();
@@ -66,7 +82,8 @@ export function ChatView({ onOpenSettings }: Props) {
   return (
     <main className="flex-1 flex flex-col min-w-0 relative">
       {/* Top bar */}
-      <header className="h-14 flex-none flex items-center gap-3 px-6 border-b border-paper-300/50 bg-paper-50/70 backdrop-blur-md">
+      <header className="h-14 flex-none flex items-center gap-2 sm:gap-3 px-4 md:px-6 border-b border-paper-300/50 bg-paper-50/70 backdrop-blur-md">
+        <HamburgerButton onClick={onOpenMobileSidebar} />
         <input
           key={conv.id}
           defaultValue={conv.title}
@@ -82,12 +99,16 @@ export function ChatView({ onOpenSettings }: Props) {
           onClick={() => setPromptDialogOpen(true)}
           className={
             hasCustomPrompt
-              ? 'ml-1 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider-meta text-sage-700 bg-sage-100/70 border border-sage-300/60 rounded-full px-2.5 py-1 hover:bg-sage-100'
-              : 'ml-1 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider-meta text-ink-500 bg-paper-100 border border-paper-300/60 rounded-full px-2.5 py-1 hover:bg-paper-200/60'
+              ? 'ml-1 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider-meta text-sage-700 bg-sage-100/70 border border-sage-300/60 rounded-full px-2.5 py-1 hover:bg-sage-100 flex-none'
+              : 'ml-1 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider-meta text-ink-500 bg-paper-100 border border-paper-300/60 rounded-full px-2.5 py-1 hover:bg-paper-200/60 flex-none'
           }
+          title={hasCustomPrompt ? 'System Prompt · 自定义' : 'System Prompt · 默认'}
         >
           <span className="w-[6px] h-[6px] rounded-full bg-current opacity-70" />
-          {hasCustomPrompt ? 'System Prompt · 自定义' : 'System Prompt · 默认'}
+          <span className="hidden sm:inline">
+            {hasCustomPrompt ? 'System Prompt · 自定义' : 'System Prompt · 默认'}
+          </span>
+          <span className="sm:hidden">Prompt</span>
         </button>
 
         <div className="ml-auto flex items-center gap-1">
@@ -96,10 +117,11 @@ export function ChatView({ onOpenSettings }: Props) {
             <button
               onClick={() => setExportOpen((v) => !v)}
               disabled={!hasMessages}
-              className="h-8 px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-8 w-8 sm:w-auto sm:px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center justify-center sm:gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="导出"
             >
               <Download size={14} />
-              导出
+              <span className="hidden sm:inline">导出</span>
             </button>
             {exportOpen && hasMessages && (
               <>
@@ -133,10 +155,11 @@ export function ChatView({ onOpenSettings }: Props) {
             onClick={() => {
               if (confirm('清空当前对话的所有消息？')) clearActiveMessages();
             }}
-            className="h-8 px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="h-8 w-8 sm:w-auto sm:px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center justify-center sm:gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="清空"
           >
             <Trash2 size={14} />
-            清空
+            <span className="hidden sm:inline">清空</span>
           </button>
 
           <button
@@ -151,7 +174,7 @@ export function ChatView({ onOpenSettings }: Props) {
       {/* Message list or empty */}
       {hasMessages ? (
         <div ref={listRef} className="flex-1 overflow-y-auto nice-scroll">
-          <div className="max-w-[768px] mx-auto px-6 py-8 space-y-7">
+          <div className="max-w-[768px] mx-auto px-4 md:px-6 py-8 space-y-7">
             {conv.messages
               .filter((m) => m.role !== 'system')
               .map((m) => (

@@ -36,9 +36,11 @@ function groupByTime(convs: Conversation[]): { label: string; items: Conversatio
 
 interface SidebarProps {
   onOpenSettings: () => void;
+  mobileOpen: boolean;
+  onMobileClose: () => void;
 }
 
-export function Sidebar({ onOpenSettings }: SidebarProps) {
+export function Sidebar({ onOpenSettings, mobileOpen, onMobileClose }: SidebarProps) {
   const conversations = useChatStore((s) => s.conversations);
   const activeId = useChatStore((s) => s.activeId);
   const createConversation = useChatStore((s) => s.createConversation);
@@ -53,7 +55,24 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
   }, [conversations]);
 
   return (
-    <aside className="w-[260px] flex-none flex flex-col bg-paper-100/70 border-r border-paper-300/60 backdrop-blur-[2px]">
+    <>
+      {/* 移动端遮罩 */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-ink-900/30 backdrop-blur-[2px] animate-fade-in"
+          onClick={onMobileClose}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        className={cn(
+          'w-[260px] flex-none flex flex-col bg-paper-100/95 md:bg-paper-100/70 border-r border-paper-300/60 backdrop-blur-[2px]',
+          'fixed inset-y-0 left-0 z-40 transition-transform duration-200 ease-out shadow-lift md:shadow-none',
+          'md:static md:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
       {/* Brand */}
       <div className="px-5 pt-5 pb-3 flex items-center gap-3">
         <div className="brand-mark" />
@@ -67,7 +86,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
 
       <div className="px-3 pb-3">
         <button
-          onClick={() => createConversation()}
+          onClick={() => {
+            createConversation();
+            onMobileClose();
+          }}
           className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-ink-900 text-paper-50 hover:bg-ink-700 transition-colors shadow-soft"
         >
           <span className="flex items-center gap-2">
@@ -92,7 +114,10 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
                   key={c.id}
                   conv={c}
                   active={c.id === activeId}
-                  onClick={() => setActive(c.id)}
+                  onClick={() => {
+                    setActive(c.id);
+                    onMobileClose();
+                  }}
                   onDelete={() => {
                     if (confirm(`删除「${c.title}」？此操作不可恢复。`)) {
                       deleteConversation(c.id);
@@ -122,7 +147,8 @@ export function Sidebar({ onOpenSettings }: SidebarProps) {
           </span>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
 
