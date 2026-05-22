@@ -32,7 +32,7 @@ export function SystemPromptDialog({ open, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-40 dialog-backdrop sm:grid sm:place-items-center sm:px-6" onClick={onClose}>
       <div
-        className="dialog-card w-full sm:max-w-[560px] h-full sm:h-auto rounded-none sm:rounded-3xl overflow-hidden flex flex-col"
+        className="dialog-card w-full sm:max-w-[560px] h-dvh sm:h-auto rounded-none sm:rounded-3xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 sm:px-7 pt-6 sm:pt-7 pb-3 flex items-start gap-4 flex-none">

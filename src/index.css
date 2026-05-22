@@ -11,6 +11,9 @@
 
   body {
     @apply bg-paper-50 text-ink-900 font-sans antialiased;
+    /* 防止移动端 URL 栏伸缩导致的外层滚动溢出，所有滚动都在内部容器里发生 */
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 }
 

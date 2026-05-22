@@ -82,7 +82,7 @@ export function SettingsDialog({ open, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="dialog-card w-full sm:max-w-[640px] h-full sm:h-auto sm:max-h-[92vh] rounded-none sm:rounded-3xl overflow-hidden animate-fade-in flex flex-col"
+        className="dialog-card w-full sm:max-w-[640px] h-dvh sm:h-auto sm:max-h-[92vh] rounded-none sm:rounded-3xl overflow-hidden animate-fade-in flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

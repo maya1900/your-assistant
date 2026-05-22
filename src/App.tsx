@@ -56,7 +56,7 @@ export default function App() {
     <>
       <div className="sunrise-wash" />
       <div className="grain-overlay" />
-      <div className="relative z-10 flex h-screen w-screen overflow-hidden">
+      <div className="relative z-10 flex h-dvh w-screen overflow-hidden">
         <Sidebar
           mobileOpen={mobileSidebarOpen}
           onMobileClose={() => setMobileSidebarOpen(false)}
