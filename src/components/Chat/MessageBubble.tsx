@@ -9,6 +9,7 @@ interface Props {
   isLastAssistant: boolean;
   canRegenerate: boolean;
   onEditUser: (id: string, newContent: string) => void;
+  onEditAssistant: (id: string, newContent: string) => void;
   onRegenerate: () => void;
 }
 
@@ -17,6 +18,7 @@ export function MessageBubble({
   isLastAssistant,
   canRegenerate,
   onEditUser,
+  onEditAssistant,
   onRegenerate,
 }: Props) {
   const isUser = message.role === 'user';
@@ -27,6 +29,7 @@ export function MessageBubble({
       message={message}
       isLastAssistant={isLastAssistant}
       canRegenerate={canRegenerate}
+      onEdit={onEditAssistant}
       onRegenerate={onRegenerate}
     />
   );
@@ -124,14 +127,18 @@ function AssistantBubble({
   message,
   isLastAssistant,
   canRegenerate,
+  onEdit,
   onRegenerate,
 }: {
   message: Message;
   isLastAssistant: boolean;
   canRegenerate: boolean;
+  onEdit: (id: string, content: string) => void;
   onRegenerate: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.content);
   const isStreaming = message.status === 'streaming';
   const isError = message.status === 'error';
   const isAborted = message.status === 'aborted';
@@ -145,6 +152,63 @@ function AssistantBubble({
       /* ignore */
     }
   };
+
+  // 编辑模式：用原文 markdown 替换渲染后的内容；保存不重新生成，只更新本地记录
+  if (editing) {
+    const lineCount = Math.min(20, Math.max(6, message.content.split('\n').length));
+    return (
+      <div className="flex items-start gap-3">
+        <div className="ai-avatar" />
+        <div className="ai-bubble max-w-[88%] w-full px-5 py-4 rounded-bubble rounded-tl-md">
+          <textarea
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                onEdit(message.id, draft);
+                setEditing(false);
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setEditing(false);
+                setDraft(message.content);
+              }
+            }}
+            rows={lineCount}
+            className="field-input w-full rounded-lg px-3 py-2.5 text-[13.5px] font-mono leading-relaxed resize-y min-h-[140px] max-h-[60vh]"
+            spellCheck={false}
+          />
+          <div className="mt-3 flex items-center justify-between gap-3 text-[12px]">
+            <span className="text-ink-500 hidden sm:inline">
+              直接修改原始 Markdown · 不会重新生成
+            </span>
+            <div className="flex gap-1.5 ml-auto">
+              <button
+                onClick={() => {
+                  setEditing(false);
+                  setDraft(message.content);
+                }}
+                className="px-2.5 py-1 rounded-md text-ink-500 hover:bg-paper-200"
+              >
+                取消 <span className="kbd ml-1">Esc</span>
+              </button>
+              <button
+                onClick={() => {
+                  onEdit(message.id, draft);
+                  setEditing(false);
+                }}
+                className="px-2.5 py-1 rounded-md font-medium text-white bg-ink-900 hover:bg-ink-700"
+              >
+                保存 <span className="kbd !bg-ink-700 !text-ink-300 !border-ink-700 ml-1">⌘⏎</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-start gap-3">
@@ -189,13 +253,24 @@ function AssistantBubble({
 
         {/* Actions */}
         {!isStreaming && message.content && (
-          <div className="mt-3 pt-3 border-t border-paper-200/80 flex items-center gap-1 -mx-1 -mb-1">
+          <div className="mt-3 pt-3 border-t border-paper-200/80 flex items-center gap-1 -mx-1 -mb-1 flex-wrap">
             <button
               onClick={copy}
               className="px-2 py-1 rounded-md text-[12px] text-ink-500 hover:text-ink-900 hover:bg-paper-100 transition-colors flex items-center gap-1.5"
             >
               {copied ? <Check size={13} /> : <Copy size={13} />}
               {copied ? '已复制' : '复制'}
+            </button>
+            <button
+              onClick={() => {
+                setDraft(message.content);
+                setEditing(true);
+              }}
+              className="px-2 py-1 rounded-md text-[12px] text-ink-500 hover:text-ink-900 hover:bg-paper-100 transition-colors flex items-center gap-1.5"
+              title="编辑这条回复（仅修改本地记录，不重新生成）"
+            >
+              <Pencil size={13} />
+              编辑
             </button>
             {isLastAssistant && canRegenerate && (
               <button

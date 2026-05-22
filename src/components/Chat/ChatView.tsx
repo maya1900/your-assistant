@@ -228,6 +228,9 @@ export function ChatView({ onOpenSettings, onOpenMobileSidebar }: Props) {
                   isLastAssistant={m.id === lastAssistantId}
                   canRegenerate={!isStreaming}
                   onEditUser={(id, content) => editAndResend(id, content)}
+                  onEditAssistant={(id, content) =>
+                    useChatStore.getState().updateMessage(conv.id, id, { content })
+                  }
                   onRegenerate={regenerate}
                 />
               ))}
