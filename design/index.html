@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your Assistant — Design Prototype</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Fonts: Fraunces (display serif), Geist (sans), Geist Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Geist:wght@300..800&family=Geist+Mono:wght@300..700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink:    { 900:'#15171C', 700:'#3B3F4A', 500:'#6B6F7B', 300:'#B9BCC3', 200:'#D9DBE0' },
+            paper:  { 50:'#FDFAF3', 100:'#F8F2E6', 200:'#F0E8D4', 300:'#E6DCC2', card:'#FFFEFB' },
+            accent: { 100:'#FFE7DB', 300:'#FFB69A', 500:'#FF6B35', 600:'#E04E1C', 700:'#B83C12' },
+            sage:   { 100:'#E8EBD8', 300:'#C2C99E', 500:'#7C8B5C', 700:'#525C3A' },
+            sky:    { 100:'#DDEBF5', 300:'#9CC0DC', 500:'#5089B5' },
+            rose:   { 100:'#FBDEDE', 500:'#D14343' },
+          },
+          fontFamily: {
+            display: ['Fraunces', 'Georgia', 'serif'],
+            sans:    ['Geist', 'system-ui', 'sans-serif'],
+            mono:    ['"Geist Mono"', 'ui-monospace', 'monospace'],
+          },
+          boxShadow: {
+            'soft':   '0 1px 2px rgba(21,23,28,0.04), 0 4px 14px rgba(21,23,28,0.04)',
+            'lift':   '0 2px 4px rgba(21,23,28,0.05), 0 12px 32px rgba(21,23,28,0.08)',
+            'warm':   '0 6px 22px rgba(255,107,53,0.22)',
+            'inset':  'inset 0 1px 0 rgba(255,255,255,0.6)',
+          },
+          borderRadius: {
+            'bubble': '20px',
+          },
+          letterSpacing: {
+            'tight-display': '-0.02em',
+            'wider-meta': '0.08em',
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* ============================================================
+       Design Tokens (mirror tailwind.config above for CSS-only use)
+       These will be migrated 1:1 into the React tailwind.config.
+       ============================================================ */
+    :root {
+      --ink-900:#15171C; --ink-700:#3B3F4A; --ink-500:#6B6F7B; --ink-300:#B9BCC3;
+      --paper-50:#FDFAF3; --paper-100:#F8F2E6; --paper-200:#F0E8D4; --paper-card:#FFFEFB;
+      --accent-500:#FF6B35; --accent-600:#E04E1C; --accent-100:#FFE7DB;
+      --sage-500:#7C8B5C; --sage-100:#E8EBD8;
+      --rose-500:#D14343;
+    }
+
+    html, body { background: var(--paper-50); color: var(--ink-900); font-family: 'Geist', system-ui, sans-serif; }
+
+    /* Paper grain: subtle SVG noise overlay applied to body */
+    body::before {
+      content:'';
+      position: fixed; inset: 0;
+      pointer-events: none;
+      opacity: 0.4;
+      mix-blend-mode: multiply;
+      z-index: 1;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.4 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    }
+
+    /* Sunrise wash behind everything */
+    body::after {
+      content:'';
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(60% 50% at 88% 0%, rgba(255,180,120,0.18), transparent 60%),
+        radial-gradient(50% 40% at 0% 100%, rgba(124,139,92,0.10), transparent 60%);
+    }
+
+    .app-shell { position: relative; z-index: 2; }
+
+    /* ============================================================
+       Streaming cursor
+       ============================================================ */
+    .stream-caret {
+      display: inline-block;
+      width: 0.5ch;
+      height: 1em;
+      background: var(--accent-500);
+      vertical-align: -0.15em;
+      margin-left: 2px;
+      border-radius: 1px;
+      animation: caret 1s steps(2, end) infinite;
+    }
+    @keyframes caret { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+
+    /* Typing dots for placeholder before any token arrives */
+    .typing-dot { animation: typingDot 1.4s infinite ease-in-out; }
+    .typing-dot:nth-child(2){ animation-delay:.15s }
+    .typing-dot:nth-child(3){ animation-delay:.30s }
+    @keyframes typingDot {
+      0%,80%,100% { transform: translateY(0); opacity:.35 }
+      40%         { transform: translateY(-3px); opacity:1 }
+    }
+
+    /* ============================================================
+       Conversation list dots (auto-color)
+       ============================================================ */
+    .conv-dot { width: 8px; height: 8px; border-radius: 999px; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.7) inset; }
+
+    /* ============================================================
+       Custom scrollbar (subtle, paper-tinted)
+       ============================================================ */
+    .nice-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+    .nice-scroll::-webkit-scrollbar-track { background: transparent; }
+    .nice-scroll::-webkit-scrollbar-thumb { background: rgba(21,23,28,0.10); border: 2px solid transparent; background-clip: padding-box; border-radius: 999px; }
+    .nice-scroll::-webkit-scrollbar-thumb:hover { background: rgba(21,23,28,0.18); background-clip: padding-box; border: 2px solid transparent; border-radius: 999px; }
+
+    /* ============================================================
+       User bubble — warm coral gradient with subtle inner highlight
+       ============================================================ */
+    .user-bubble {
+      background:
+        radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.30), transparent 40%),
+        linear-gradient(135deg, #FFB37D 0%, #FF7A52 55%, #F45A38 100%);
+      color: #fff;
+      text-shadow: 0 1px 0 rgba(180,55,20,0.25);
+      box-shadow: 0 8px 20px -10px rgba(244,90,56,0.55), inset 0 1px 0 rgba(255,255,255,0.35);
+    }
+
+    /* AI bubble — paper card with one-pixel warm border */
+    .ai-bubble {
+      background: var(--paper-card);
+      border: 1px solid #EFE6D0;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 6px 18px -10px rgba(21,23,28,0.10);
+    }
+
+    /* Conversation item active background */
+    .conv-active {
+      background: linear-gradient(180deg, #FFFEFB 0%, #FFF6EC 100%);
+      box-shadow: inset 0 0 0 1px #F0E2C8, 0 1px 0 rgba(255,255,255,0.8) inset;
+    }
+
+    /* ============================================================
+       Send button — round, primary action
+       ============================================================ */
+    .send-btn {
+      background: linear-gradient(135deg, #FF7A45 0%, #FF5722 100%);
+      color: #fff;
+      transition: transform .15s ease, box-shadow .15s ease;
+      box-shadow: 0 6px 18px -6px rgba(255,87,34,0.55), inset 0 1px 0 rgba(255,255,255,0.25);
+    }
+    .send-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgba(255,87,34,0.65); }
+    .send-btn:active { transform: translateY(0); }
+    .send-btn svg { transition: transform .25s ease; }
+    .send-btn:hover svg { transform: translateX(2px) translateY(-2px) rotate(-8deg); }
+
+    /* Stop button — outlined with pulsing ring */
+    .stop-btn {
+      background: var(--paper-card);
+      color: var(--ink-900);
+      border: 1px solid #E6DCC2;
+      position: relative;
+      transition: background .15s ease;
+    }
+    .stop-btn::after {
+      content:''; position: absolute; inset: -4px;
+      border-radius: 999px;
+      border: 1.5px solid rgba(255,107,53,0.5);
+      animation: stopPulse 1.6s ease-out infinite;
+    }
+    @keyframes stopPulse {
+      0%   { transform: scale(0.95); opacity: .7 }
+      80%,100% { transform: scale(1.25); opacity: 0 }
+    }
+    .stop-btn:hover { background: var(--accent-100); }
+
+    /* ============================================================
+       Editable title — subtle dashed underline on hover
+       ============================================================ */
+    .editable-title:hover { box-shadow: 0 1px 0 var(--ink-300); }
+    .editable-title:focus { box-shadow: 0 1px 0 var(--accent-500); outline: none; }
+
+    /* ============================================================
+       Code block style (Markdown)
+       ============================================================ */
+    .codeblock {
+      background: #1A1D24;
+      color: #E6E5DF;
+      border-radius: 14px;
+      font-family: 'Geist Mono', ui-monospace, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      overflow: hidden;
+    }
+    .codeblock-bar {
+      background: #14171C;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .codeblock pre { margin: 0; padding: 14px 18px; overflow-x: auto; }
+    .codeblock .tok-key    { color: #FF9A6B; }
+    .codeblock .tok-str    { color: #C5D478; }
+    .codeblock .tok-comment{ color: #6B7280; font-style: italic; }
+    .codeblock .tok-fn     { color: #9CC0DC; }
+    .codeblock .tok-var    { color: #E6E5DF; }
+    .codeblock .tok-num    { color: #F0C674; }
+
+    .copy-chip {
+      background: rgba(255,255,255,0.06);
+      color: #C9C7BF;
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: background .15s ease, color .15s ease;
+    }
+    .copy-chip:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+    /* Inline code inside paragraphs */
+    .md-inline-code {
+      background: var(--paper-200);
+      color: var(--accent-700, #B83C12);
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 0.88em;
+    }
+
+    /* ============================================================
+       Empty state — preset cards
+       ============================================================ */
+    .prompt-card {
+      background: var(--paper-card);
+      border: 1px solid #EFE6D0;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 6px 18px -14px rgba(21,23,28,0.18);
+    }
+    .prompt-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-300, #FFB69A);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.6) inset, 0 12px 28px -14px rgba(255,107,53,0.35);
+    }
+
+    /* ============================================================
+       Settings dialog — backdrop blur + paper card
+       ============================================================ */
+    .dialog-backdrop {
+      background: rgba(21,23,28,0.35);
+      backdrop-filter: blur(8px) saturate(120%);
+      -webkit-backdrop-filter: blur(8px) saturate(120%);
+    }
+    .dialog-card {
+      background: var(--paper-card);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.8) inset,
+        0 30px 80px -20px rgba(21,23,28,0.35),
+        0 8px 24px -10px rgba(21,23,28,0.20);
+    }
+    .field-input {
+      background: var(--paper-50);
+      border: 1px solid #E6DCC2;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .field-input:hover { border-color: #D9CDA9; }
+    .field-input:focus {
+      outline: none;
+      border-color: var(--accent-500);
+      box-shadow: 0 0 0 4px rgba(255,107,53,0.12);
+    }
+
+    /* Slider track (temperature) */
+    .slider {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 6px;
+      background: linear-gradient(to right, #FF7A45 0%, #FF7A45 var(--val, 35%), #EBE0C4 var(--val, 35%), #EBE0C4 100%);
+      border-radius: 999px;
+      outline: none;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 18px; height: 18px; border-radius: 999px;
+      background: #fff; border: 2px solid var(--accent-500);
+      box-shadow: 0 2px 6px rgba(21,23,28,0.15);
+      cursor: pointer;
+    }
+
+    /* ============================================================
+       View switcher
+       ============================================================ */
+    .view-switcher {
+      position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+      z-index: 50;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid #EFE6D0;
+      border-radius: 999px;
+      padding: 4px;
+      display: flex; gap: 2px;
+      box-shadow: 0 10px 30px -10px rgba(21,23,28,0.2);
+    }
+    .view-switcher button {
+      padding: 8px 14px;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--ink-700);
+      border-radius: 999px;
+      transition: background .15s ease, color .15s ease;
+      font-family: 'Geist', sans-serif;
+      font-weight: 500;
+    }
+    .view-switcher button:hover { color: var(--ink-900); }
+    .view-switcher button.active {
+      background: var(--ink-900);
+      color: #fff;
+    }
+
+    /* fade-in for active section */
+    .view-section { animation: fadeIn .35s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Brand mark — small sun glyph */
+    .brand-mark {
+      width: 22px; height: 22px;
+      background: conic-gradient(from 220deg, #FFC089, #FF7A45, #FFC089);
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px #FFFEFB, 0 0 0 3px #F0E2C8;
+    }
+
+    /* avatar — AI */
+    .ai-avatar {
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 30% 30%, #FFC089 0%, #FF7A45 60%, #E04E1C 100%);
+      box-shadow: 0 0 0 1.5px #F0E2C8, 0 2px 6px -2px rgba(255,87,34,0.4);
+      flex: none;
+    }
+
+    /* avatar — user (just initial) */
+    .user-avatar {
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      background: var(--ink-900);
+      color: #fff;
+      display: grid; place-items: center;
+      font-family: 'Fraunces', serif;
+      font-weight: 500;
+      font-size: 13px;
+      flex: none;
+    }
+
+    /* ============================================================
+       Misc
+       ============================================================ */
+    .hairline { background: linear-gradient(to right, transparent, #E6DCC2 20%, #E6DCC2 80%, transparent); height: 1px; }
+
+    .kbd {
+      font-family: 'Geist Mono', monospace; font-size: 11px;
+      padding: 1px 6px;
+      background: var(--paper-100);
+      border: 1px solid #E6DCC2;
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      color: var(--ink-700);
+    }
+  </style>
+</head>
+<body class="font-sans text-ink-900 antialiased">
+
+<div class="app-shell">
+
+  <!-- =====================================================================
+       VIEW 1: Chat with content
+       ===================================================================== -->
+  <section data-view="chat" class="view-section">
+    <div class="flex h-screen w-screen overflow-hidden">
+
+      <!-- Sidebar -->
+      <aside class="sidebar w-[260px] flex-none flex flex-col bg-paper-100/70 border-r border-paper-300/60 backdrop-blur-[2px]">
+
+        <!-- Brand -->
+        <div class="px-5 pt-5 pb-3 flex items-center gap-3">
+          <div class="brand-mark"></div>
+          <div>
+            <div class="font-display text-[18px] leading-none tracking-tight-display">Hearth</div>
+            <div class="text-[11px] text-ink-500 tracking-wider-meta uppercase mt-1">your assistant</div>
+          </div>
+        </div>
+
+        <div class="px-3 pb-3">
+          <!-- New conversation button -->
+          <button class="sidebar__new-button group w-full flex items-center justify-between px-3 py-2.5 rounded-xl
+                         bg-ink-900 text-paper-50 hover:bg-ink-700 transition-colors shadow-soft">
+            <span class="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              <span class="text-sm font-medium">新对话</span>
+            </span>
+            <span class="kbd !bg-ink-700 !text-ink-300 !border-ink-700">⌘K</span>
+          </button>
+        </div>
+
+        <!-- Conversation list -->
+        <div class="px-3 mt-1 flex-1 overflow-y-auto nice-scroll">
+          <div class="text-[11px] text-ink-500 tracking-wider-meta uppercase px-3 mb-2 mt-1">今天</div>
+
+          <!-- Active item -->
+          <button class="conversation-item conv-active w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group">
+            <span class="conv-dot" style="background:#FF7A45"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] font-medium truncate">Tailwind 配色方案讨论</div>
+              <div class="text-[11px] text-ink-500 truncate mt-0.5">关于暖色调与冷色调的平衡…</div>
+            </span>
+            <button class="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-paper-200 rounded">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+          </button>
+
+          <button class="conversation-item w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group hover:bg-paper-200/60">
+            <span class="conv-dot" style="background:#7C8B5C"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] truncate">SSE 流式解析最佳实践</div>
+              <div class="text-[11px] text-ink-500 truncate mt-0.5">需要处理粘包与心跳…</div>
+            </span>
+          </button>
+
+          <button class="conversation-item w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group hover:bg-paper-200/60">
+            <span class="conv-dot" style="background:#5089B5"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] truncate">Zustand 与 Jotai 对比</div>
+              <div class="text-[11px] text-ink-500 truncate mt-0.5">看场景，前者更适合…</div>
+            </span>
+          </button>
+
+          <div class="text-[11px] text-ink-500 tracking-wider-meta uppercase px-3 mb-2 mt-5">本周</div>
+
+          <button class="conversation-item w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group hover:bg-paper-200/60">
+            <span class="conv-dot" style="background:#D14343"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] truncate">React 性能优化清单</div>
+              <div class="text-[11px] text-ink-500 truncate mt-0.5">memo / useMemo / useCallback…</div>
+            </span>
+          </button>
+
+          <button class="conversation-item w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group hover:bg-paper-200/60">
+            <span class="conv-dot" style="background:#C2C99E"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] truncate">写一首关于秋夜的十四行诗</div>
+              <div class="text-[11px] text-ink-500 truncate mt-0.5">月光从瓦片间漏下…</div>
+            </span>
+          </button>
+
+          <button class="conversation-item w-full text-left px-3 py-2.5 rounded-lg mb-1 flex items-center gap-2.5 group hover:bg-paper-200/60">
+            <span class="conv-dot" style="background:#FFB69A"></span>
+            <span class="flex-1 min-w-0">
+              <div class="text-[13.5px] truncate">从 Go 切到 TypeScript 的心智差异</div>
+            </span>
+          </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="px-3 py-3 border-t border-paper-300/50">
+          <button class="sidebar__settings w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-paper-200/60 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span class="text-[13.5px]">设置</span>
+            <span class="ml-auto text-[11px] text-ink-500">DeepSeek</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main chat area -->
+      <main class="chat-view flex-1 flex flex-col min-w-0 relative">
+
+        <!-- Top bar -->
+        <header class="chat-header h-14 flex-none flex items-center gap-3 px-6 border-b border-paper-300/50 bg-paper-50/70 backdrop-blur-md">
+          <input
+            class="editable-title font-display text-[18px] tracking-tight-display bg-transparent border-b border-transparent px-1 py-0.5 w-[280px]"
+            value="Tailwind 配色方案讨论"
+            spellcheck="false"
+          />
+          <span class="ml-1 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider-meta text-sage-700 bg-sage-100/70 border border-sage-300/60 rounded-full px-2.5 py-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+            System Prompt · 自定义
+          </span>
+
+          <div class="ml-auto flex items-center gap-1">
+            <button class="h-8 px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              导出
+            </button>
+            <button class="h-8 px-2.5 rounded-lg text-[12.5px] text-ink-700 hover:bg-paper-200/60 transition-colors flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+              清空
+            </button>
+            <button class="h-8 w-8 rounded-lg text-ink-700 hover:bg-paper-200/60 transition-colors grid place-items-center" title="更多">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Message list -->
+        <div class="message-list flex-1 overflow-y-auto nice-scroll">
+          <div class="max-w-[768px] mx-auto px-6 py-8 space-y-7">
+
+            <!-- USER message -->
+            <div class="flex items-start gap-3 justify-end">
+              <div class="message-bubble message-bubble--user user-bubble max-w-[78%] px-4 py-3 rounded-bubble rounded-tr-md">
+                <p class="text-[14.5px] leading-relaxed">
+                  我想把这个聊天应用做成<strong>暖色纸感</strong>风格，不要常见的灰白冷淡。给我一组配色 token，要 Tailwind 友好。
+                </p>
+              </div>
+              <div class="user-avatar">M</div>
+            </div>
+
+            <!-- AI message with markdown + code block -->
+            <div class="flex items-start gap-3">
+              <div class="ai-avatar"></div>
+              <div class="message-bubble message-bubble--ai ai-bubble max-w-[88%] px-5 py-4 rounded-bubble rounded-tl-md">
+
+                <div class="prose-content text-[14.5px] leading-relaxed text-ink-900 space-y-3">
+                  <p>暖色纸感的核心在于<span class="md-inline-code">背景不要纯白</span>，文字不要纯黑，强调色用一种就好。下面给你一组实用 token：</p>
+
+                  <ul class="list-disc pl-5 space-y-1.5 marker:text-accent-500">
+                    <li><strong>Paper</strong>：从 <code class="md-inline-code">#FDFAF3</code> 到 <code class="md-inline-code">#F0E8D4</code> 的米黄阶</li>
+                    <li><strong>Ink</strong>：用偏蓝的深色 <code class="md-inline-code">#15171C</code>，避免纯黑显脏</li>
+                    <li><strong>Accent</strong>：一支夕阳橘 <code class="md-inline-code">#FF6B35</code>，仅用于关键 CTA</li>
+                  </ul>
+
+                  <p>Tailwind 配置示意：</p>
+
+                  <!-- Code block -->
+                  <div class="codeblock not-prose">
+                    <div class="codeblock-bar flex items-center justify-between px-4 py-2 text-[11px] tracking-wider-meta uppercase">
+                      <span class="text-paper-200/80">tailwind.config.ts</span>
+                      <button class="copy-chip px-2 py-1 rounded-md flex items-center gap-1.5 text-[11px]">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        复制
+                      </button>
+                    </div>
+<pre><code><span class="tok-key">theme</span>: {
+  <span class="tok-key">extend</span>: {
+    <span class="tok-key">colors</span>: {
+      <span class="tok-fn">paper</span>:  { <span class="tok-num">50</span>: <span class="tok-str">'#FDFAF3'</span>, <span class="tok-num">100</span>: <span class="tok-str">'#F8F2E6'</span> },
+      <span class="tok-fn">ink</span>:    { <span class="tok-num">900</span>: <span class="tok-str">'#15171C'</span>, <span class="tok-num">700</span>: <span class="tok-str">'#3B3F4A'</span> },
+      <span class="tok-fn">accent</span>: { <span class="tok-num">500</span>: <span class="tok-str">'#FF6B35'</span> },
+    }
+  }
+}</code></pre>
+                  </div>
+
+                  <p>剩下的关键是<strong>用克制</strong>：橘色只出现在主按钮、链接、流式光标这三处，其它一律走 ink/paper 色阶。</p>
+                </div>
+
+                <!-- Message actions -->
+                <div class="mt-3 pt-3 border-t border-paper-200/80 flex items-center gap-1 -mx-1 -mb-1">
+                  <button class="px-2 py-1 rounded-md text-[12px] text-ink-500 hover:text-ink-900 hover:bg-paper-100 transition-colors flex items-center gap-1.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    复制
+                  </button>
+                  <button class="px-2 py-1 rounded-md text-[12px] text-ink-500 hover:text-ink-900 hover:bg-paper-100 transition-colors flex items-center gap-1.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    重新生成
+                  </button>
+                  <span class="ml-auto text-[11px] text-ink-300 pr-1">204 tokens · 1.4s</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- USER message 2 -->
+            <div class="flex items-start gap-3 justify-end">
+              <div class="message-bubble message-bubble--user user-bubble max-w-[78%] px-4 py-3 rounded-bubble rounded-tr-md">
+                <p class="text-[14.5px] leading-relaxed">那用户消息气泡呢？给一个具体方案。</p>
+              </div>
+              <div class="user-avatar">M</div>
+            </div>
+
+            <!-- AI message — streaming -->
+            <div class="flex items-start gap-3">
+              <div class="ai-avatar"></div>
+              <div class="message-bubble message-bubble--ai ai-bubble max-w-[88%] px-5 py-4 rounded-bubble rounded-tl-md">
+                <div class="text-[14.5px] leading-relaxed text-ink-900 space-y-3">
+                  <p id="streaming-text">用户气泡可以用<strong>橘红渐变</strong> + 微妙内阴影，强化"我说的"这一身份感。建议：</p>
+                  <ul class="list-disc pl-5 space-y-1.5 marker:text-accent-500">
+                    <li>渐变方向 135deg，浅在左上、深在右下</li>
+                    <li>文字白色 + 极轻的深色 text-shadow（让对比更稳）</li>
+                    <li>圆角 20px，右上角缩为 6px，做出"指向自己"的<span class="stream-caret"></span></li>
+                  </ul>
+                </div>
+
+                <!-- Streaming meta -->
+                <div class="mt-3 pt-3 border-t border-paper-200/80 flex items-center gap-2">
+                  <span class="inline-flex items-center gap-1 text-[11px] text-accent-600 tracking-wider-meta uppercase">
+                    <span class="typing-dot inline-block w-1 h-1 rounded-full bg-accent-500"></span>
+                    <span class="typing-dot inline-block w-1 h-1 rounded-full bg-accent-500"></span>
+                    <span class="typing-dot inline-block w-1 h-1 rounded-full bg-accent-500"></span>
+                    生成中
+                  </span>
+                  <span class="ml-auto text-[11px] text-ink-300 pr-1">deepseek-chat</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Input bar -->
+        <div class="chat-input-wrap flex-none px-6 pb-6 pt-2 bg-gradient-to-t from-paper-50 via-paper-50 to-paper-50/0">
+          <div class="max-w-[768px] mx-auto">
+            <div class="chat-input relative bg-paper-card border border-paper-300/80 rounded-2xl shadow-soft transition-shadow focus-within:shadow-lift focus-within:border-accent-300">
+              <textarea
+                rows="2"
+                placeholder="问点什么…   Enter 发送 · Shift+Enter 换行"
+                class="w-full resize-none bg-transparent px-5 py-4 pr-14 text-[14.5px] leading-relaxed placeholder:text-ink-500/70 focus:outline-none"
+              ></textarea>
+
+              <!-- Stop button (shown during streaming in this demo) -->
+              <button class="stop-btn absolute right-3 bottom-3 h-10 w-10 rounded-full grid place-items-center" title="停止生成">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              </button>
+
+              <!-- Toolbar row -->
+              <div class="flex items-center gap-2 px-4 pb-3 -mt-1">
+                <button class="text-[11.5px] text-ink-500 hover:text-ink-900 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-paper-100">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  上下文 8 条
+                </button>
+                <button class="text-[11.5px] text-ink-500 hover:text-ink-900 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-paper-100">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Temperature 0.7
+                </button>
+                <span class="ml-auto text-[11px] text-ink-500/80">
+                  <span class="kbd">Enter</span> 发送 · <span class="kbd">⇧↵</span> 换行
+                </span>
+              </div>
+            </div>
+            <p class="text-center text-[11px] text-ink-500 mt-3">
+              所有对话仅保存在你的浏览器本地，刷新或换设备不会同步。
+            </p>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+
+  <!-- =====================================================================
+       VIEW 2: Empty state
+       ===================================================================== -->
+  <section data-view="empty" class="view-section" style="display:none">
+    <div class="flex h-screen w-screen overflow-hidden">
+
+      <!-- Sidebar (collapsed-looking empty) -->
+      <aside class="sidebar w-[260px] flex-none flex flex-col bg-paper-100/70 border-r border-paper-300/60">
+        <div class="px-5 pt-5 pb-3 flex items-center gap-3">
+          <div class="brand-mark"></div>
+          <div>
+            <div class="font-display text-[18px] leading-none tracking-tight-display">Hearth</div>
+            <div class="text-[11px] text-ink-500 tracking-wider-meta uppercase mt-1">your assistant</div>
+          </div>
+        </div>
+        <div class="px-3 pb-3">
+          <button class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-ink-900 text-paper-50 hover:bg-ink-700 transition-colors shadow-soft">
+            <span class="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              <span class="text-sm font-medium">新对话</span>
+            </span>
+            <span class="kbd !bg-ink-700 !text-ink-300 !border-ink-700">⌘K</span>
+          </button>
+        </div>
+
+        <div class="flex-1 px-3 mt-1 grid place-items-center">
+          <div class="text-center max-w-[180px] py-10">
+            <div class="mx-auto mb-3 w-10 h-10 rounded-full bg-paper-200/70 grid place-items-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="text-ink-500"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <p class="text-[12.5px] text-ink-500 leading-relaxed">还没有对话。<br/>开始一个吧 →</p>
+          </div>
+        </div>
+
+        <div class="px-3 py-3 border-t border-paper-300/50">
+          <button class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-paper-200/60 transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span class="text-[13.5px]">设置</span>
+            <span class="ml-auto text-[11px] text-rose-500">未配置</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main empty state -->
+      <main class="flex-1 flex flex-col min-w-0 relative">
+        <header class="h-14 flex-none border-b border-paper-300/50 bg-paper-50/40 backdrop-blur-md"></header>
+
+        <div class="flex-1 overflow-y-auto nice-scroll">
+          <div class="max-w-[780px] mx-auto px-6 py-16">
+
+            <!-- Greeting -->
+            <div class="mb-12">
+              <div class="inline-flex items-center gap-2 mb-5 text-[11px] uppercase tracking-wider-meta text-ink-500">
+                <span class="brand-mark !w-3 !h-3"></span>
+                <span>good morning</span>
+              </div>
+              <h1 class="font-display text-[56px] leading-[1.05] tracking-tight-display text-ink-900">
+                今天，<span class="italic" style="font-variation-settings:'SOFT' 80, 'WONK' 1; color:#FF6B35">想聊点</span><br/>什么？
+              </h1>
+              <p class="mt-5 text-[15px] text-ink-700 max-w-[480px] leading-relaxed">
+                我可以解释代码、写作、做技术选型、翻译，或者只是陪你想清楚一件事。从一张卡片开始，或者直接在下面输入。
+              </p>
+            </div>
+
+            <!-- Preset cards — asymmetric 2x2 grid -->
+            <div class="grid grid-cols-2 gap-4 mb-8">
+              <button class="prompt-card text-left p-5 rounded-2xl">
+                <div class="w-9 h-9 rounded-xl bg-accent-100 grid place-items-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6B35" stroke-width="1.8"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                </div>
+                <div class="text-[14px] font-medium mb-1">解释一段代码</div>
+                <div class="text-[12.5px] text-ink-500 leading-relaxed">把它当面向新手，说清每一行在做什么、为什么这么写。</div>
+              </button>
+
+              <button class="prompt-card text-left p-5 rounded-2xl">
+                <div class="w-9 h-9 rounded-xl bg-sage-100 grid place-items-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8B5C" stroke-width="1.8"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                </div>
+                <div class="text-[14px] font-medium mb-1">写一首十四行诗</div>
+                <div class="text-[12.5px] text-ink-500 leading-relaxed">关于秋夜、关于咖啡、关于一个你想念但说不出口的人。</div>
+              </button>
+
+              <button class="prompt-card text-left p-5 rounded-2xl">
+                <div class="w-9 h-9 rounded-xl bg-sky-100 grid place-items-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5089B5" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                </div>
+                <div class="text-[14px] font-medium mb-1">帮我做技术选型</div>
+                <div class="text-[12.5px] text-ink-500 leading-relaxed">列出场景、约束、候选项，给一个推荐 + 它的代价。</div>
+              </button>
+
+              <button class="prompt-card text-left p-5 rounded-2xl">
+                <div class="w-9 h-9 rounded-xl bg-paper-200 grid place-items-center mb-3">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B3F4A" stroke-width="1.8"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                </div>
+                <div class="text-[14px] font-medium mb-1">翻译一段文字</div>
+                <div class="text-[12.5px] text-ink-500 leading-relaxed">英 ↔ 中，保留语气与节奏，不做直白的字面对应。</div>
+              </button>
+            </div>
+
+            <div class="hairline mb-8"></div>
+
+            <div class="flex items-center gap-3 text-[12px] text-ink-500">
+              <span class="kbd">⌘K</span>
+              <span>新建对话</span>
+              <span class="text-ink-300">·</span>
+              <span class="kbd">⌘,</span>
+              <span>打开设置</span>
+              <span class="text-ink-300">·</span>
+              <span class="kbd">Esc</span>
+              <span>清空输入</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div class="flex-none px-6 pb-6 pt-2">
+          <div class="max-w-[780px] mx-auto">
+            <div class="chat-input relative bg-paper-card border border-paper-300/80 rounded-2xl shadow-soft focus-within:shadow-lift focus-within:border-accent-300 transition-shadow">
+              <textarea
+                rows="2"
+                placeholder="问点什么…   Enter 发送 · Shift+Enter 换行"
+                class="w-full resize-none bg-transparent px-5 py-4 pr-14 text-[14.5px] leading-relaxed placeholder:text-ink-500/70 focus:outline-none"
+              ></textarea>
+
+              <button class="send-btn absolute right-3 bottom-3 h-10 w-10 rounded-full grid place-items-center" title="发送">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+
+              <div class="flex items-center gap-2 px-4 pb-3 -mt-1">
+                <button class="text-[11.5px] text-ink-500 hover:text-ink-900 transition-colors flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-paper-100">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Temperature 0.7
+                </button>
+                <span class="ml-auto text-[11px] text-ink-500/80">
+                  <span class="kbd">Enter</span> 发送
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </section>
+
+
+  <!-- =====================================================================
+       VIEW 3: Settings dialog
+       ===================================================================== -->
+  <section data-view="settings" class="view-section" style="display:none">
+    <div class="relative h-screen w-screen overflow-hidden">
+
+      <!-- Background: keep the chat view dimmed underneath -->
+      <div class="absolute inset-0 opacity-40 pointer-events-none">
+        <div class="flex h-full w-full">
+          <aside class="w-[260px] flex-none bg-paper-100/70 border-r border-paper-300/60"></aside>
+          <main class="flex-1 bg-paper-50/40"></main>
+        </div>
+      </div>
+
+      <!-- Backdrop -->
+      <div class="dialog-backdrop absolute inset-0 grid place-items-center px-6">
+
+        <div class="settings-dialog dialog-card w-full max-w-[640px] rounded-3xl overflow-hidden">
+
+          <!-- Header -->
+          <div class="px-7 pt-7 pb-5 flex items-start gap-4">
+            <div class="brand-mark mt-1"></div>
+            <div class="flex-1">
+              <h2 class="font-display text-[26px] leading-tight tracking-tight-display">设置</h2>
+              <p class="text-[13px] text-ink-500 mt-1">
+                配置任意兼容 OpenAI Chat Completions 协议的模型服务。Key 只保存在你的浏览器，不会上传。
+              </p>
+            </div>
+            <button class="w-8 h-8 rounded-lg hover:bg-paper-200/60 grid place-items-center text-ink-500 hover:text-ink-900 transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="hairline mx-7"></div>
+
+          <!-- Form -->
+          <div class="px-7 py-6 space-y-5">
+
+            <div class="grid grid-cols-3 gap-x-5 gap-y-5">
+
+              <div class="col-span-2 settings-field">
+                <label class="block text-[12px] font-medium text-ink-700 mb-1.5">
+                  Base URL
+                </label>
+                <input class="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono"
+                       value="https://api.deepseek.com/v1" spellcheck="false"/>
+                <div class="mt-1.5 text-[11.5px] text-ink-500">兼容 OpenAI 协议的服务地址</div>
+              </div>
+
+              <div class="settings-field">
+                <label class="block text-[12px] font-medium text-ink-700 mb-1.5">Model</label>
+                <input class="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono"
+                       value="deepseek-chat" spellcheck="false"/>
+                <div class="mt-1.5 text-[11.5px] text-ink-500">模型 ID</div>
+              </div>
+
+              <div class="col-span-3 settings-field">
+                <label class="block text-[12px] font-medium text-ink-700 mb-1.5 flex items-center justify-between">
+                  <span>API Key</span>
+                  <span class="text-[11px] text-ink-500 font-normal">仅本地保存</span>
+                </label>
+                <div class="relative">
+                  <input type="password" class="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] font-mono pr-12"
+                         value="sk-7d3a9c8e1f0b4a2e5d6f7c8b9a0e1d2c"/>
+                  <button class="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md text-[11px] text-ink-500 hover:text-ink-900 hover:bg-paper-200 transition-colors">显示</button>
+                </div>
+              </div>
+
+              <div class="col-span-3 settings-field">
+                <label class="block text-[12px] font-medium text-ink-700 mb-2.5 flex items-center justify-between">
+                  <span>Temperature</span>
+                  <span class="font-mono text-[13px] text-accent-600">0.7</span>
+                </label>
+                <input type="range" min="0" max="2" step="0.1" value="0.7" class="slider" style="--val:35%"/>
+                <div class="mt-1.5 flex justify-between text-[11px] text-ink-500">
+                  <span>更确定 · 0</span>
+                  <span>平衡</span>
+                  <span>更发散 · 2</span>
+                </div>
+              </div>
+
+              <div class="col-span-3 settings-field">
+                <label class="block text-[12px] font-medium text-ink-700 mb-1.5 flex items-center justify-between">
+                  <span>Default System Prompt</span>
+                  <span class="text-[11px] text-ink-500 font-normal">每个会话可单独覆盖</span>
+                </label>
+                <textarea rows="3" class="field-input w-full rounded-xl px-3.5 py-2.5 text-[13.5px] leading-relaxed resize-none"
+                          spellcheck="false">你是一个克制、诚实、有审美的助手。回答要简洁，用 Markdown 组织结构，代码示例必给可运行版本。</textarea>
+              </div>
+
+            </div>
+
+            <!-- Danger zone -->
+            <div class="mt-2 rounded-2xl border border-rose-100 bg-rose-100/40 px-4 py-3.5 flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-rose-100 grid place-items-center flex-none">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D14343" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              </div>
+              <div class="flex-1">
+                <div class="text-[13px] font-medium text-rose-500">清空所有对话</div>
+                <div class="text-[11.5px] text-ink-500 mt-0.5">不可恢复。所有本地会话与消息会被删除。</div>
+              </div>
+              <button class="px-3 py-1.5 text-[12.5px] font-medium text-rose-500 hover:bg-rose-100 rounded-lg transition-colors">清空</button>
+            </div>
+
+          </div>
+
+          <!-- Footer -->
+          <div class="px-7 py-5 bg-paper-100/60 border-t border-paper-300/50 flex items-center justify-between">
+            <a href="#" class="text-[12px] text-ink-500 hover:text-ink-900 inline-flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              如何获取 API Key？
+            </a>
+            <div class="flex items-center gap-2">
+              <button class="px-4 py-2 text-[13px] text-ink-700 hover:bg-paper-200 rounded-lg transition-colors">取消</button>
+              <button class="px-4 py-2 text-[13px] font-medium text-white bg-ink-900 hover:bg-ink-700 rounded-lg transition-colors shadow-soft">
+                保存设置
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- =====================================================================
+       VIEW 4: Design tokens (for React migration reference)
+       ===================================================================== -->
+  <section data-view="tokens" class="view-section" style="display:none">
+    <div class="min-h-screen w-screen overflow-y-auto nice-scroll">
+      <div class="max-w-[1080px] mx-auto px-8 py-12">
+
+        <div class="mb-10">
+          <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">design system</div>
+          <h1 class="font-display text-[44px] leading-tight tracking-tight-display">设计 Token 一览</h1>
+          <p class="text-[14px] text-ink-700 mt-3 max-w-[560px] leading-relaxed">
+            下面是这套原型用到的全部颜色、字体、阴影 token，已 1:1 写入 <code class="md-inline-code">tailwind.config</code>，React 实现时直接引用 Tailwind 工具类即可。
+          </p>
+        </div>
+
+        <!-- Colors -->
+        <div class="mb-10">
+          <h2 class="font-display text-[22px] mb-4">Colors</h2>
+
+          <div class="space-y-6">
+            <!-- Paper scale -->
+            <div>
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Paper · 背景</div>
+              <div class="grid grid-cols-5 gap-3">
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#FDFAF3" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">paper-50</div><div class="text-[11px] font-mono text-ink-500">#FDFAF3</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#F8F2E6" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">paper-100</div><div class="text-[11px] font-mono text-ink-500">#F8F2E6</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#F0E8D4" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">paper-200</div><div class="text-[11px] font-mono text-ink-500">#F0E8D4</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#E6DCC2" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">paper-300</div><div class="text-[11px] font-mono text-ink-500">#E6DCC2</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#FFFEFB" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">paper-card</div><div class="text-[11px] font-mono text-ink-500">#FFFEFB</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ink scale -->
+            <div>
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Ink · 文字</div>
+              <div class="grid grid-cols-5 gap-3">
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#15171C" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">ink-900</div><div class="text-[11px] font-mono text-ink-500">#15171C</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#3B3F4A" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">ink-700</div><div class="text-[11px] font-mono text-ink-500">#3B3F4A</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#6B6F7B" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">ink-500</div><div class="text-[11px] font-mono text-ink-500">#6B6F7B</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#B9BCC3" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">ink-300</div><div class="text-[11px] font-mono text-ink-500">#B9BCC3</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#D9DBE0" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">ink-200</div><div class="text-[11px] font-mono text-ink-500">#D9DBE0</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accent -->
+            <div>
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Accent · 夕阳橘（主 CTA）</div>
+              <div class="grid grid-cols-5 gap-3">
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#FFE7DB" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">accent-100</div><div class="text-[11px] font-mono text-ink-500">#FFE7DB</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#FFB69A" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">accent-300</div><div class="text-[11px] font-mono text-ink-500">#FFB69A</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#FF6B35" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">accent-500</div><div class="text-[11px] font-mono text-ink-500">#FF6B35</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#E04E1C" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">accent-600</div><div class="text-[11px] font-mono text-ink-500">#E04E1C</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#B83C12" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">accent-700</div><div class="text-[11px] font-mono text-ink-500">#B83C12</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Secondary -->
+            <div>
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">辅助色（仅用于标签 / 状态）</div>
+              <div class="grid grid-cols-5 gap-3">
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#7C8B5C" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">sage-500</div><div class="text-[11px] font-mono text-ink-500">#7C8B5C</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#5089B5" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">sky-500</div><div class="text-[11px] font-mono text-ink-500">#5089B5</div></div>
+                </div>
+                <div class="rounded-xl overflow-hidden border border-paper-300/50">
+                  <div style="background:#D14343" class="h-16"></div>
+                  <div class="px-3 py-2 bg-paper-card"><div class="text-[12px] font-medium">rose-500</div><div class="text-[11px] font-mono text-ink-500">#D14343</div></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Typography -->
+        <div class="mb-10">
+          <h2 class="font-display text-[22px] mb-4">Typography</h2>
+          <div class="grid grid-cols-2 gap-5">
+            <div class="prompt-card p-6 rounded-2xl">
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Display · Fraunces</div>
+              <div class="font-display text-[44px] leading-none tracking-tight-display">想聊点什么？</div>
+              <div class="font-display text-[20px] mt-3">The quick brown fox</div>
+              <div class="text-[12px] text-ink-500 mt-3 font-mono">font-family: Fraunces</div>
+            </div>
+            <div class="prompt-card p-6 rounded-2xl">
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Body · Geist</div>
+              <div class="text-[15px] leading-relaxed">这是正文字号，用于消息内容、说明文字等场景。保证 14~15px 之间，行高 1.6~1.7。</div>
+              <div class="text-[13px] text-ink-700 mt-2">次级字号 13px，用于元信息。</div>
+              <div class="text-[12px] text-ink-500 mt-3 font-mono">font-family: Geist</div>
+            </div>
+            <div class="prompt-card p-6 rounded-2xl col-span-2">
+              <div class="text-[11px] uppercase tracking-wider-meta text-ink-500 mb-2">Mono · Geist Mono</div>
+              <div class="font-mono text-[14px] text-ink-900">const greet = (name: string) => `Hello, ${name}!`;</div>
+              <div class="text-[12px] text-ink-500 mt-3 font-mono">font-family: Geist Mono</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shadows -->
+        <div class="mb-10">
+          <h2 class="font-display text-[22px] mb-4">Elevation</h2>
+          <div class="grid grid-cols-3 gap-4">
+            <div class="bg-paper-card rounded-2xl p-6 shadow-soft border border-paper-300/40">
+              <div class="text-[13px] font-medium">shadow-soft</div>
+              <div class="text-[11px] font-mono text-ink-500 mt-1">用于卡片默认态</div>
+            </div>
+            <div class="bg-paper-card rounded-2xl p-6 shadow-lift border border-paper-300/40">
+              <div class="text-[13px] font-medium">shadow-lift</div>
+              <div class="text-[11px] font-mono text-ink-500 mt-1">hover / focus 抬升</div>
+            </div>
+            <div class="bg-paper-card rounded-2xl p-6 shadow-warm border border-accent-300/40">
+              <div class="text-[13px] font-medium">shadow-warm</div>
+              <div class="text-[11px] font-mono text-ink-500 mt-1">主按钮投影</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hairline mb-8"></div>
+
+        <p class="text-[12px] text-ink-500">
+          后续 React 项目里，在 <code class="md-inline-code">tailwind.config.ts</code> 中复制本页顶端的 <code class="md-inline-code">tailwind.config</code> 即可获得全部 token。
+        </p>
+
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- View switcher -->
+<nav class="view-switcher" role="tablist">
+  <button class="active" data-target="chat">主对话</button>
+  <button data-target="empty">空状态</button>
+  <button data-target="settings">设置弹窗</button>
+  <button data-target="tokens">Design Tokens</button>
+</nav>
+
+<script>
+  const buttons = document.querySelectorAll('.view-switcher button');
+  const sections = document.querySelectorAll('section[data-view]');
+
+  function activate(target){
+    buttons.forEach(b => b.classList.toggle('active', b.dataset.target === target));
+    sections.forEach(s => {
+      const match = s.dataset.view === target;
+      s.style.display = match ? 'block' : 'none';
+      if (match) {
+        // re-trigger animation
+        s.classList.remove('view-section');
+        void s.offsetWidth;
+        s.classList.add('view-section');
+      }
+    });
+  }
+
+  buttons.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
+
+  // Keyboard: 1-4 to switch views
+  window.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    const map = { '1':'chat', '2':'empty', '3':'settings', '4':'tokens' };
+    if (map[e.key]) activate(map[e.key]);
+  });
+</script>
+
+</body>
+</html>
