@@ -77,33 +77,46 @@ npm run dev
 
 ## 生产部署
 
+**推荐 Vercel**（仓库里已经带好对应的 Edge Function）：
+
 ```bash
-npm run build         # 产物在 dist/
+# 任选其一
+vercel              # 用 vercel CLI 部署
+# 或 push 到 GitHub 后在 Vercel Dashboard "Import Project"
 ```
 
-dist 是纯静态文件，可以丢到任意静态站点托管（Vercel / Netlify / GitHub Pages / Nginx）。**但有一个前提**：浏览器在 prod 模式下直连用户配置的 Base URL，**目标服务必须允许跨域**，否则会被 CORS 拦截。
+部署完成即可使用，**不需要任何额外配置**。
 
-解决办法二选一：
+> Vite 项目结构内 `api/llm/[...path].ts` 是一个 Vercel Edge Function，会镜像 dev 阶段 Vite 中间件的协议（按 `X-LLM-Base-URL` 头动态转发），所以浏览器永远只调用同源 `/api/llm/*`，不会撞 CORS。详见 [docs/ARCHITECTURE.md § 五](docs/ARCHITECTURE.md)。
 
-1. **改成接你自己的反向代理**：把 `src/services/llmClient.ts` 里 `import.meta.env.DEV` 的判断改为始终走代理路径，然后在 Nginx/Cloudflare Workers 上做一段类似 dev 中间件的转发
-2. **只对接原生支持 CORS 的服务**（如 DeepSeek 的 chat endpoint）：用户填的 Base URL 是这种，prod 直连即可
+### 部署到其他平台
+
+dist/ 是纯静态文件，可以丢到任意静态站点托管，但**必须自己再实现一份等价的代理**（Cloudflare Workers / Netlify Functions / Nginx 反向代理皆可）。代理协议：
+
+- 接受 path `/api/llm/<any>`
+- 读取请求头 `X-LLM-Base-URL` 决定转发目标
+- 流式响应原样回传（务必边读边写，不要缓冲，否则 SSE 会断）
+
+照着 `api/llm/[...path].ts` 翻译一遍即可。
 
 ## 项目结构
 
 ```
 your-assistant/
-├── docs/              # SPEC / ARCHITECTURE / ROADMAP + 截图
-├── design/            # 设计原型（静态 HTML）
+├── api/
+│   └── llm/[...path].ts  # Vercel Edge Function (生产环境代理)
+├── docs/                 # SPEC / ARCHITECTURE / ROADMAP + 截图
+├── design/               # 设计原型（静态 HTML）
 ├── src/
 │   ├── App.tsx
-│   ├── components/    # Sidebar / Chat / Markdown / Settings
-│   ├── store/         # Zustand stores (chat + settings)
-│   ├── services/      # llmClient (streamChat + testConnection)
-│   ├── hooks/         # useStreamingChat / useAutoScroll
-│   ├── lib/           # id, cn, exporters
-│   └── types/         # Message / Conversation / Settings
-├── vite.config.ts     # 含 LLM dev 代理中间件
-└── tailwind.config.js # 设计 token
+│   ├── components/       # Sidebar / Chat / Markdown / Settings
+│   ├── store/            # Zustand stores (chat + settings)
+│   ├── services/         # llmClient (streamChat + testConnection)
+│   ├── hooks/            # useStreamingChat / useAutoScroll
+│   ├── lib/              # id, cn, exporters
+│   └── types/            # Message / Conversation / Settings
+├── vite.config.ts        # 含 LLM dev 代理中间件
+└── tailwind.config.js    # 设计 token
 ```
 
 详细分层与设计决策见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。

@@ -28,6 +28,8 @@ your-assistant/
 ├── vite.config.ts                # 含 LLM dev 代理中间件（见 § 五）
 ├── tailwind.config.js
 ├── postcss.config.js
+├── api/
+│   └── llm/[...path].ts          # Vercel Edge Function: prod 端 LLM 代理（见 § 五）
 ├── design/index.html             # 静态 UI 原型，React 还原参照
 ├── docs/
 │   ├── SPEC.md
@@ -151,12 +153,17 @@ export async function testConnection(req: TestConnectionRequest): Promise<TestCo
 
 为什么不用第三方 SDK：OpenAI 官方 SDK 不能保证国产模型兼容，且会带来不必要的 bundle 体积；自己写 ~120 行就能搞定。
 
-## 五、开发态 CORS 代理（Vite 中间件）
+## 五、CORS 代理（dev + prod 双端实现）
 
-浏览器直连任意 LLM 服务多半会被 CORS 拦截。我们在 `vite.config.ts` 里挂一个 connect 中间件 `/api/llm/*`，**动态读取请求头里的 `X-LLM-Base-URL` 决定转发目标**，所以设置面板里可以填任意 base URL。
+浏览器直连任意 LLM 服务多半会被 CORS 拦截。我们用一条统一的协议解决：
+
+**协议**：前端永远调用同源 `/api/llm/<sub>`，并在请求头里塞 `X-LLM-Base-URL: <用户填的 baseURL>`。后端按这个头动态决定转发目标，流式响应原样回传。
+
+两端各有一份实现：
+
+### 5.1 Dev — Vite 中间件（`vite.config.ts`）
 
 ```ts
-// vite.config.ts 摘要
 const llmProxy: Connect.NextHandleFunction = async (req, res) => {
   const baseURL = req.headers['x-llm-base-url'];
   const upstream = await fetch(baseURL + req.url, { method: req.method, headers, body });
@@ -165,16 +172,45 @@ const llmProxy: Connect.NextHandleFunction = async (req, res) => {
   res.flushHeaders();
   // 边读边写，保证 SSE 流式不被缓冲
   const reader = upstream.body.getReader();
-  while ((const { done, value } = await reader.read(), !done)) res.write(Buffer.from(value));
+  while (true) { const { done, value } = await reader.read(); if (done) break; res.write(Buffer.from(value)); }
   res.end();
 };
 ```
 
-要点：
+要点：`flushHeaders()` 提前把响应头送出去，避免 Node 默认缓冲打断 SSE。
 
-- `flushHeaders()` 提前把响应头送出去，避免 Node 默认缓冲打断 SSE
-- 透传 headers 时剔除 `host`、`content-length`、`connection`、自身的 `x-llm-base-url`
-- `llmClient.ts` 里通过 `import.meta.env.DEV` 自动切换：dev 调用 `/api/llm/chat/completions` + 带头，prod 直连用户配置的 base URL（部署时需自行加 Nginx/Cloudflare 之类的反向代理）
+### 5.2 Prod — Vercel Edge Function（`api/llm/[...path].ts`）
+
+```ts
+export const config = { runtime: 'edge' };
+
+export default async function handler(req: Request): Promise<Response> {
+  const baseURL = req.headers.get('x-llm-base-url')!;
+  const url = new URL(req.url);
+  const target = baseURL + url.pathname.replace(/^\/api\/llm/, '') + url.search;
+
+  const upstream = await fetch(target, {
+    method: req.method,
+    headers: fwdHeaders,
+    body: req.body,
+    // @ts-expect-error - duplex 流式请求体必需
+    duplex: 'half',
+  });
+
+  // 关键：把 upstream.body 直接传给 Response 构造器，保留 SSE
+  return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
+}
+```
+
+要点：Edge runtime 原生支持 Web Streams，`new Response(upstream.body)` 直接透传 ReadableStream，不需要手动 reader。
+
+### 5.3 客户端无感切换
+
+`llmClient.ts` 只调用 `/api/llm/chat/completions` 一条路径，dev 走中间件、prod 走 Edge Function，前端代码不需要任何分支判断。
+
+### 5.4 部署到其他平台
+
+如果不部署到 Vercel，需要自行实现等价的代理（Cloudflare Workers / Netlify Functions / Nginx 等），保证同源路径 + `X-LLM-Base-URL` 头协议一致即可。
 
 ## 六、流式 hook 设计
 

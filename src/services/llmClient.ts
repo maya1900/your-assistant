@@ -19,18 +19,19 @@ export interface StreamRequest {
 
 /**
  * 返回针对 /chat/completions 的 URL 和 headers。
- * Dev 走 Vite 动态代理绕开浏览器 CORS；prod 直连（部署侧自行处理跨域）。
+ * 永远走 /api/llm/* 代理：
+ *   - dev: vite.config.ts 里的中间件按 X-LLM-Base-URL 头动态转发
+ *   - prod: api/llm/[...path].ts (Vercel Edge Function) 做同样的事
+ * 两条路径协议一致，所以前端不需要分 dev/prod 分支。
  */
 function buildEndpoint(baseURL: string, apiKey: string) {
   const cleanedBase = baseURL.replace(/\/+$/, '');
-  const isDev = import.meta.env.DEV;
-  const url = isDev ? '/api/llm/chat/completions' : `${cleanedBase}/chat/completions`;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${apiKey}`,
+    'X-LLM-Base-URL': cleanedBase,
   };
-  if (isDev) headers['X-LLM-Base-URL'] = cleanedBase;
-  return { url, headers };
+  return { url: '/api/llm/chat/completions', headers };
 }
 
 async function readErrorDetail(response: Response): Promise<string> {
